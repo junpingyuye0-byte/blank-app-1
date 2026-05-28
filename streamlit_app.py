@@ -1,811 +1,702 @@
-import streamlit as st
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+import json
 import random
-import time
-from words import WORD_DATABASE, IDIOM_DATABASE
+import os
+from datetime import datetime
+from quiz_data import QUIZ_DATA
 
-# ─── ページ設定 ───────────────────────────────────────────────
-st.set_page_config(
-    page_title="英単語マスター",
-    page_icon="📚",
-    layout="centered",
-    initial_sidebar_state="expanded"
-)
+# ==============================
+# 保存ファイルパス
+# ==============================
+SAVE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "save_data")
+os.makedirs(SAVE_DIR, exist_ok=True)
+HISTORY_FILE = os.path.join(SAVE_DIR, "history.json")
+NOTES_FILE = os.path.join(SAVE_DIR, "notes.json")
 
-# ─── CSS スタイリング ─────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;700;900&family=Space+Mono:wght@400;700&display=swap');
+# ==============================
+# カラーパレット
+# ==============================
+BG_MAIN      = "#1a1a2e"
+BG_CARD      = "#16213e"
+BG_ACCENT    = "#0f3460"
+COLOR_GOLD   = "#e2b96a"
+COLOR_RED    = "#e55353"
+COLOR_GREEN  = "#4caf7d"
+COLOR_WHITE  = "#f0eadc"
+COLOR_GRAY   = "#8a8fa8"
+COLOR_BTN    = "#e2b96a"
+COLOR_BTN_FG = "#1a1a2e"
+FONT_TITLE   = ("Georgia", 22, "bold")
+FONT_HEAD    = ("Georgia", 15, "bold")
+FONT_BODY    = ("Yu Gothic UI", 13)
+FONT_SMALL   = ("Yu Gothic UI", 11)
+FONT_BTN     = ("Yu Gothic UI", 12, "bold")
 
-:root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface2: #1e1e2a;
-    --accent: #7c3aed;
-    --accent2: #06b6d4;
-    --green: #10b981;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
-}
+# ==============================
+# データ管理
+# ==============================
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
-html, body, .stApp {
-    background-color: var(--bg) !important;
-    color: var(--text) !important;
-    font-family: 'Noto Sans JP', sans-serif;
-}
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-/* サイドバー */
-section[data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid rgba(124,58,237,0.3);
-}
-section[data-testid="stSidebar"] * {
-    color: var(--text) !important;
-}
+# ==============================
+# メインアプリ
+# ==============================
+class HistoryQuizApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("🌍 世界史クイズ")
+        self.geometry("900x680")
+        self.resizable(True, True)
+        self.configure(bg=BG_MAIN)
+        self.history_records = load_json(HISTORY_FILE)
+        self.notes = load_json(NOTES_FILE)
+        self._show_home()
 
-/* メインコンテンツ */
-.block-container {
-    padding: 2rem 1.5rem !important;
-    max-width: 800px !important;
-}
+    # ---- 画面切り替え共通 ----
+    def _clear(self):
+        for w in self.winfo_children():
+            w.destroy()
 
-/* タイトルカード */
-.title-card {
-    background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(6,182,212,0.1) 100%);
-    border: 1px solid rgba(124,58,237,0.4);
-    border-radius: 16px;
-    padding: 2rem;
-    text-align: center;
-    margin-bottom: 2rem;
-}
-.title-card h1 {
-    font-family: 'Space Mono', monospace;
-    font-size: 2.5rem;
-    font-weight: 700;
-    background: linear-gradient(90deg, #7c3aed, #06b6d4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0;
-}
-.title-card p {
-    color: var(--muted);
-    margin-top: 0.5rem;
-    font-size: 0.95rem;
-}
+    def _show_home(self):
+        self._clear()
+        HomeScreen(self)
 
-/* ステータスバー */
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    margin-bottom: 1.5rem;
-    gap: 1rem;
-}
-.stat-item {
-    text-align: center;
-    flex: 1;
-}
-.stat-value {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--accent2);
-}
-.stat-label {
-    font-size: 0.7rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
+    def _show_quiz(self, mode):
+        self._clear()
+        QuizScreen(self, mode)
 
-/* タイマーバー */
-.timer-container {
-    margin-bottom: 1.5rem;
-}
-.timer-bar-bg {
-    background: var(--surface2);
-    border-radius: 8px;
-    height: 10px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.05);
-}
+    def _show_history(self):
+        self._clear()
+        HistoryScreen(self)
 
-/* 問題カード */
-.question-card {
-    background: var(--surface);
-    border: 1px solid rgba(124,58,237,0.3);
-    border-radius: 16px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-    position: relative;
-}
-.question-num {
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-family: 'Space Mono', monospace;
-    margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-.question-word {
-    font-family: 'Space Mono', monospace;
-    font-size: 2.8rem;
-    font-weight: 700;
-    color: white;
-    margin: 0.5rem 0 0.25rem;
-    letter-spacing: -1px;
-}
-.question-hint {
-    font-size: 0.85rem;
-    color: var(--muted);
-    margin-top: 0.5rem;
-}
-.difficulty-badge {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-family: 'Space Mono', monospace;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.diff-1 { background: rgba(16,185,129,0.2); color: #10b981; border: 1px solid #10b981; }
-.diff-2 { background: rgba(6,182,212,0.2); color: #06b6d4; border: 1px solid #06b6d4; }
-.diff-3 { background: rgba(245,158,11,0.2); color: #f59e0b; border: 1px solid #f59e0b; }
-.diff-4 { background: rgba(239,68,68,0.2); color: #ef4444; border: 1px solid #ef4444; }
+    def _show_notes(self):
+        self._clear()
+        NotesScreen(self)
 
-/* 選択肢ボタン */
-.stButton > button {
-    width: 100%;
-    background: var(--surface2) !important;
-    color: var(--text) !important;
-    border: 1px solid rgba(255,255,255,0.1) !important;
-    border-radius: 12px !important;
-    padding: 0.85rem 1.5rem !important;
-    font-family: 'Noto Sans JP', sans-serif !important;
-    font-size: 1rem !important;
-    text-align: left !important;
-    transition: all 0.2s ease !important;
-    margin-bottom: 0.5rem !important;
-}
-.stButton > button:hover {
-    background: rgba(124,58,237,0.2) !important;
-    border-color: var(--accent) !important;
-    transform: translateX(4px) !important;
-}
+# ==============================
+# ホーム画面
+# ==============================
+class HomeScreen(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master, bg=BG_MAIN)
+        self.pack(fill="both", expand=True)
+        self._build()
 
-/* 正解・不正解フィードバック */
-.feedback-correct {
-    background: rgba(16,185,129,0.15);
-    border: 1px solid var(--green);
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-top: 1rem;
-    animation: slideIn 0.3s ease;
-}
-.feedback-wrong {
-    background: rgba(239,68,68,0.15);
-    border: 1px solid var(--red);
-    border-radius: 12px;
-    padding: 1.25rem;
-    margin-top: 1rem;
-    animation: slideIn 0.3s ease;
-}
-.feedback-icon {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-}
-.feedback-related {
-    font-size: 0.85rem;
-    color: var(--muted);
-    margin-top: 0.5rem;
-}
-.feedback-related span {
-    background: rgba(124,58,237,0.2);
-    border: 1px solid rgba(124,58,237,0.4);
-    padding: 0.15rem 0.5rem;
-    border-radius: 20px;
-    margin-right: 0.3rem;
-    color: #a78bfa;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.8rem;
-}
+    def _build(self):
+        # タイトル
+        tk.Label(self, text="🌍 世界史クイズ", font=FONT_TITLE,
+                 bg=BG_MAIN, fg=COLOR_GOLD).pack(pady=(40, 5))
+        tk.Label(self, text="モードを選んでスタート！",
+                 font=FONT_BODY, bg=BG_MAIN, fg=COLOR_GRAY).pack(pady=(0, 30))
 
-/* スピードランモード特有 */
-.speedrun-warning {
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.3);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    color: #fca5a5;
-    text-align: center;
-    margin-bottom: 1rem;
-}
+        # モードボタン
+        modes = [
+            ("📅  年号クイズ",        "年号",        "重要な出来事が起きた年を答えよう"),
+            ("👤  人物名クイズ",       "人物名",      "歴史上の偉人を当てよう"),
+            ("📖  出来事クイズ",       "出来事",      "歴史的事件・出来事を答えよう"),
+            ("🏆  人物がやったことクイズ","人物がやったこと","歴史上の人物の業績を覚えよう"),
+            ("🔀  やり直し（間違い復習）","retry",    "これまでに間違えた問題だけ"),
+        ]
+        for label, mode, desc in modes:
+            self._mode_btn(label, mode, desc)
 
-/* 結果画面 */
-.result-card {
-    background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(6,182,212,0.1));
-    border: 1px solid rgba(124,58,237,0.4);
-    border-radius: 20px;
-    padding: 2.5rem;
-    text-align: center;
-    margin: 1rem 0;
-}
-.result-score {
-    font-family: 'Space Mono', monospace;
-    font-size: 4rem;
-    font-weight: 700;
-    background: linear-gradient(90deg, #7c3aed, #06b6d4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-.result-grade {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0.5rem 0;
-}
-.miss-list {
-    background: var(--surface);
-    border-radius: 12px;
-    padding: 1.5rem;
-    text-align: left;
-    margin-top: 1.5rem;
-}
-.miss-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    font-size: 0.9rem;
-}
-.miss-word { 
-    font-family: 'Space Mono', monospace; 
-    color: #a78bfa;
-    font-weight: 700;
-}
-.miss-meaning { color: var(--muted); }
+        # 区切り
+        tk.Frame(self, height=2, bg=BG_ACCENT).pack(fill="x", padx=80, pady=20)
 
-/* ウェーブアニメ */
-@keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
+        # サブボタン
+        sub_frame = tk.Frame(self, bg=BG_MAIN)
+        sub_frame.pack()
+        self._sub_btn(sub_frame, "📋 履歴",  self.master._show_history)
+        self._sub_btn(sub_frame, "📝 ノート", self.master._show_notes)
 
-/* Streamlit デフォルト要素を非表示 */
-#MainMenu, footer, header { visibility: hidden; }
-.stDeployButton { display: none !important; }
+    def _mode_btn(self, label, mode, desc):
+        frame = tk.Frame(self, bg=BG_CARD, bd=0, relief="flat", cursor="hand2")
+        frame.pack(fill="x", padx=100, pady=6)
+        inner = tk.Frame(frame, bg=BG_CARD)
+        inner.pack(fill="x", padx=20, pady=12)
+        tk.Label(inner, text=label, font=FONT_BTN,
+                 bg=BG_CARD, fg=COLOR_GOLD, anchor="w").pack(side="left")
+        tk.Label(inner, text=desc, font=FONT_SMALL,
+                 bg=BG_CARD, fg=COLOR_GRAY, anchor="e").pack(side="right")
+        for w in (frame, inner):
+            w.bind("<Button-1>", lambda e, m=mode: self.master._show_quiz(m))
+            w.bind("<Enter>",    lambda e, f=frame: f.config(bg="#1e2d50"))
+            w.bind("<Leave>",    lambda e, f=frame: f.config(bg=BG_CARD))
 
-/* セレクトボックス */
-.stSelectbox > div > div {
-    background: var(--surface2) !important;
-    color: var(--text) !important;
-    border-color: rgba(255,255,255,0.1) !important;
-}
-.stRadio > div {
-    background: transparent !important;
-}
-.stRadio label {
-    color: var(--text) !important;
-}
-div[data-testid="stRadio"] > div {
-    flex-direction: column;
-    gap: 0.25rem;
-}
+    def _sub_btn(self, parent, text, cmd):
+        btn = tk.Button(parent, text=text, font=FONT_BTN, bg=BG_ACCENT,
+                        fg=COLOR_WHITE, bd=0, padx=24, pady=8,
+                        activebackground=COLOR_GOLD, activeforeground=BG_MAIN,
+                        cursor="hand2", command=cmd)
+        btn.pack(side="left", padx=10)
 
-/* プログレスバー */
-.stProgress > div > div > div {
-    background: linear-gradient(90deg, #7c3aed, #06b6d4) !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# ==============================
+# クイズ画面
+# ==============================
+class QuizScreen(tk.Frame):
+    def __init__(self, master, mode):
+        super().__init__(master, bg=BG_MAIN)
+        self.pack(fill="both", expand=True)
+        self.mode = mode
+        self.questions = self._load_questions()
+        self.idx = 0
+        self.score = 0
+        self.total = len(self.questions)
+        self.wrong_list = []
+        self.answered = False
+        if not self.questions:
+            messagebox.showinfo("情報", "間違えた問題がありません！通常モードで練習しましょう。")
+            master._show_home()
+            return
+        self._build()
+        self._show_question()
 
-
-# ─── セッション状態初期化 ────────────────────────────────────
-def init_session():
-    defaults = {
-        "screen": "home",          # home | game | result
-        "mode": "normal",          # normal | speedrun | retry
-        "word_mode": "vocab",      # vocab | idiom
-        "difficulty": 1,           # 1-4
-        "questions": [],
-        "current_q": 0,
-        "score": 0,
-        "total": 10,
-        "answered": False,
-        "last_correct": None,
-        "missed_words": [],
-        "wrong_related": [],       # 間違えた単語の関連語（次回出題用）
-        "start_time": None,
-        "q_start_time": None,
-        "speedrun_base_time": 10.0,
-        "speedrun_level": 1,
-        "lives": 3,                # スピードランのライフ
-        "streak": 0,
-        "best_streak": 0,
-        "q_elapsed": 0,
-        "time_expired": False,
-    }
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
-
-def get_db():
-    return IDIOM_DATABASE if st.session_state.word_mode == "idiom" else WORD_DATABASE
-
-
-def build_question_pool(difficulty, mode, wrong_related=None):
-    """問題セットを構築（間違えた関連語を優先）"""
-    db = get_db()
-    
-    if mode == "retry" and wrong_related:
-        # やり直しモード：間違えた単語の関連語を検索して出題
-        pool = []
-        for d in range(1, 5):
-            for w in db.get(d, []):
-                if w["word"] in wrong_related or any(r in wrong_related for r in w.get("related", [])):
-                    pool.append(w)
-        if not pool:
-            # フォールバック：同難易度から
-            pool = db.get(difficulty, [])
-    elif mode == "speedrun":
-        # スピードラン：現在の難易度から
-        pool = []
-        for d in range(1, min(difficulty + 1, 5)):
-            pool.extend(db.get(d, []))
-    else:
-        pool = db.get(difficulty, [])
-    
-    if not pool:
-        pool = db.get(1, [])
-    
-    # 間違えた関連語が存在すれば優先
-    if wrong_related and mode != "retry":
-        priority = [w for w in pool if any(r in wrong_related for r in w.get("related", []))]
-        rest = [w for w in pool if w not in priority]
-        pool = priority + rest
-    
-    random.shuffle(pool)
-    return pool[:st.session_state.total]
-
-
-def get_speedrun_time_limit():
-    """スピードランの残り時間制限（問題が進むごとに短くなる）"""
-    level = st.session_state.speedrun_level
-    base = st.session_state.speedrun_base_time
-    return max(3.0, base - (level - 1) * 0.5)
-
-
-# ─── ホーム画面 ──────────────────────────────────────────────
-def render_home():
-    st.markdown("""
-    <div class="title-card">
-        <h1>📚 VOCAB MASTER</h1>
-        <p>英単語・熟語マスターへの道</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("#### 🎯 単語モード")
-        word_mode = st.radio("", ["vocab", "idiom"], 
-                              format_func=lambda x: "📖 単語" if x == "vocab" else "💬 熟語",
-                              key="wm_select", horizontal=False)
-    with col2:
-        st.markdown("#### ⚙️ 難易度")
-        diff_map = {
-            "🟢 Lv.1 基礎": 1,
-            "🔵 Lv.2 中級": 2,
-            "🟡 Lv.3 上級": 3,
-            "🔴 Lv.4 難関大": 4,
-        }
-        diff_label = st.radio("", list(diff_map.keys()), key="diff_select", horizontal=False)
-        difficulty = diff_map[diff_label]
-
-    st.markdown("---")
-    st.markdown("#### 🕹️ ゲームモード")
-    
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        st.markdown("""
-        <div style='background:rgba(16,185,129,0.1);border:1px solid #10b981;border-radius:12px;padding:1rem;text-align:center;margin-bottom:0.5rem;'>
-            <div style='font-size:2rem'>📝</div>
-            <div style='font-weight:700;color:#10b981'>ノーマル</div>
-            <div style='font-size:0.75rem;color:#64748b;margin-top:0.3rem'>じっくり学習</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("ノーマルで開始", key="start_normal", use_container_width=True):
-            start_game("normal", word_mode, difficulty)
-
-    with c2:
-        st.markdown("""
-        <div style='background:rgba(239,68,68,0.1);border:1px solid #ef4444;border-radius:12px;padding:1rem;text-align:center;margin-bottom:0.5rem;'>
-            <div style='font-size:2rem'>⚡</div>
-            <div style='font-weight:700;color:#ef4444'>スピードラン</div>
-            <div style='font-size:0.75rem;color:#64748b;margin-top:0.3rem'>制限時間付き</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("スピードランで開始", key="start_speed", use_container_width=True):
-            start_game("speedrun", word_mode, difficulty)
-
-    with c3:
-        has_missed = len(st.session_state.missed_words) > 0
-        badge = "" if has_missed else "🔒"
-        color = "#f59e0b" if has_missed else "#64748b"
-        st.markdown(f"""
-        <div style='background:rgba(245,158,11,0.1);border:1px solid {color};border-radius:12px;padding:1rem;text-align:center;margin-bottom:0.5rem;'>
-            <div style='font-size:2rem'>{badge}🔄</div>
-            <div style='font-weight:700;color:{color}'>やり直し</div>
-            <div style='font-size:0.75rem;color:#64748b;margin-top:0.3rem'>間違い克服</div>
-        </div>
-        """, unsafe_allow_html=True)
-        btn_disabled = not has_missed
-        if st.button("やり直しで開始" + ("" if has_missed else " (未プレイ)"), 
-                     key="start_retry", use_container_width=True, disabled=btn_disabled):
-            start_game("retry", word_mode, difficulty)
-
-    # 過去の間違い単語表示
-    if st.session_state.missed_words:
-        with st.expander(f"📌 間違えた単語 ({len(st.session_state.missed_words)}語)"):
-            for m in st.session_state.missed_words[-10:]:
-                st.markdown(f"- **{m['word']}** → {m['meaning']}")
-
-
-def start_game(mode, word_mode, difficulty):
-    wrong_related = [w["word"] for w in st.session_state.missed_words] + \
-                    [r for w in st.session_state.missed_words for r in w.get("related", [])]
-    
-    st.session_state.mode = mode
-    st.session_state.word_mode = word_mode
-    st.session_state.difficulty = difficulty
-    st.session_state.questions = build_question_pool(difficulty, mode, wrong_related if mode == "retry" else None)
-    st.session_state.current_q = 0
-    st.session_state.score = 0
-    st.session_state.answered = False
-    st.session_state.last_correct = None
-    st.session_state.start_time = time.time()
-    st.session_state.q_start_time = time.time()
-    st.session_state.speedrun_level = 1
-    st.session_state.lives = 3
-    st.session_state.streak = 0
-    st.session_state.best_streak = 0
-    st.session_state.time_expired = False
-    if mode != "retry":
-        st.session_state.wrong_related = wrong_related
-    st.session_state.screen = "game"
-    st.rerun()
-
-
-# ─── ゲーム画面 ──────────────────────────────────────────────
-def render_game():
-    qs = st.session_state.questions
-    qi = st.session_state.current_q
-    mode = st.session_state.mode
-    
-    if not qs or qi >= len(qs):
-        st.session_state.screen = "result"
-        st.rerun()
-        return
-
-    q = qs[qi]
-    total = len(qs)
-    diff_names = {1: "基礎", 2: "中級", 3: "上級", 4: "難関大"}
-    diff_colors = {1: "diff-1", 2: "diff-2", 3: "diff-3", 4: "diff-4"}
-
-    # ── ステータスバー ──
-    elapsed_total = time.time() - st.session_state.start_time if st.session_state.start_time else 0
-    
-    col_stat = st.columns(4)
-    metrics = [
-        ("問題", f"{qi + 1} / {total}"),
-        ("正解数", str(st.session_state.score)),
-        ("連続正解", f"🔥 {st.session_state.streak}" if st.session_state.streak >= 3 else str(st.session_state.streak)),
-        ("経過", f"{int(elapsed_total)}s"),
-    ]
-    if mode == "speedrun":
-        metrics[3] = ("ライフ", "❤️" * st.session_state.lives + "🖤" * (3 - st.session_state.lives))
-
-    for col, (label, val) in zip(col_stat, metrics):
-        with col:
-            st.markdown(f"""
-            <div class='stat-item'>
-                <div class='stat-value'>{val}</div>
-                <div class='stat-label'>{label}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # プログレスバー
-    st.progress((qi) / total)
-
-    # ── スピードランタイマー ──
-    if mode == "speedrun" and not st.session_state.answered:
-        time_limit = get_speedrun_time_limit()
-        elapsed_q = time.time() - (st.session_state.q_start_time or time.time())
-        remaining = max(0, time_limit - elapsed_q)
-        ratio = remaining / time_limit
-
-        color = "#10b981" if ratio > 0.5 else ("#f59e0b" if ratio > 0.25 else "#ef4444")
-        st.markdown(f"""
-        <div class='timer-container'>
-            <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;'>
-                <span style='font-size:0.75rem;color:#64748b;font-family:Space Mono,monospace;'>⏱ 残り時間</span>
-                <span style='font-family:Space Mono,monospace;color:{color};font-weight:700;font-size:1.1rem;'>{remaining:.1f}s</span>
-            </div>
-            <div class='timer-bar-bg'>
-                <div style='height:100%;width:{ratio*100:.1f}%;background:{color};border-radius:8px;transition:width 0.1s linear;'></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # 時間切れチェック
-        if remaining <= 0 and not st.session_state.time_expired:
-            st.session_state.time_expired = True
-            st.session_state.answered = True
-            st.session_state.last_correct = False
-            st.session_state.lives -= 1
-            if q not in st.session_state.missed_words:
-                st.session_state.missed_words.append(q)
-            st.session_state.streak = 0
-            st.rerun()
-
-    # スピードランレベル表示
-    if mode == "speedrun":
-        level = st.session_state.speedrun_level
-        time_lim = get_speedrun_time_limit()
-        st.markdown(f"""
-        <div class='speedrun-warning'>
-            ⚡ スピードラン Lv.{level} | 制限時間: {time_lim:.1f}秒 | 難易度は徐々に上昇します
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ── 問題カード ──
-    diff = q.get("difficulty", st.session_state.difficulty)
-    wm = "熟語" if st.session_state.word_mode == "idiom" else "単語"
-    st.markdown(f"""
-    <div class='question-card'>
-        <div class='question-num'>{wm} No.{qi + 1} {'⏰ 時間切れ!' if st.session_state.time_expired else ''}</div>
-        <div class='question-word'>{q['word']}</div>
-        <div class='question-hint'>正しい意味を選んでください</div>
-        <div class='difficulty-badge {diff_colors[diff]}'>{diff_names[diff]}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ── 選択肢 ──
-    if not st.session_state.answered:
-        options = q["options"].copy()
-        random.shuffle(options)
-        
-        for i, opt in enumerate(options):
-            if st.button(f"　{opt}", key=f"opt_{qi}_{i}", use_container_width=True):
-                correct = (opt == q["meaning"])
-                st.session_state.answered = True
-                st.session_state.last_correct = correct
-                st.session_state.time_expired = False
-                
-                if correct:
-                    st.session_state.score += 1
-                    st.session_state.streak += 1
-                    if st.session_state.streak > st.session_state.best_streak:
-                        st.session_state.best_streak = st.session_state.streak
-                else:
-                    if q not in st.session_state.missed_words:
-                        st.session_state.missed_words.append(q)
-                    # 関連語を記録
-                    for r in q.get("related", []):
-                        if r not in st.session_state.wrong_related:
-                            st.session_state.wrong_related.append(r)
-                    st.session_state.streak = 0
-                    if mode == "speedrun":
-                        st.session_state.lives -= 1
-                
-                st.rerun()
-    else:
-        # ── フィードバック ──
-        time_expired = st.session_state.time_expired
-        correct = st.session_state.last_correct
-        
-        if time_expired:
-            st.markdown(f"""
-            <div class='feedback-wrong'>
-                <div class='feedback-icon'>⏰</div>
-                <div><strong>時間切れ！</strong></div>
-                <div style='margin-top:0.5rem;'>正解：<strong style='color:#10b981'>{q['meaning']}</strong></div>
-                <div class='feedback-related'>
-                    関連語: {''.join([f"<span>{r}</span>" for r in q.get('related', [])])}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        elif correct:
-            streak_msg = f" 🔥 {st.session_state.streak}連続正解！" if st.session_state.streak >= 3 else ""
-            st.markdown(f"""
-            <div class='feedback-correct'>
-                <div class='feedback-icon'>✅</div>
-                <div><strong>正解！{streak_msg}</strong></div>
-                <div style='margin-top:0.5rem;color:#94a3b8;font-size:0.9rem;'>{q['meaning']}</div>
-                <div class='feedback-related'>
-                    類義語: {''.join([f"<span>{r}</span>" for r in q.get('related', [])])}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+    def _load_questions(self):
+        if self.mode == "retry":
+            history = load_json(HISTORY_FILE)
+            wrong = [r for r in history if not r["correct"]]
+            if not wrong:
+                return []
+            # 重複除去して最近の間違いを最大20問
+            seen = set()
+            qs = []
+            for r in reversed(wrong):
+                key = r["question"]
+                if key not in seen:
+                    seen.add(key)
+                    qs.append({
+                        "question": r["question"],
+                        "answer": r["answer"],
+                        "choices": r.get("choices", [r["answer"]]),
+                        "explanation": r.get("explanation", ""),
+                        "category": r.get("category", ""),
+                    })
+                if len(qs) >= 20:
+                    break
+            random.shuffle(qs)
+            return qs
         else:
-            st.markdown(f"""
-            <div class='feedback-wrong'>
-                <div class='feedback-icon'>❌</div>
-                <div><strong>不正解</strong></div>
-                <div style='margin-top:0.5rem;'>正解：<strong style='color:#10b981'>{q['meaning']}</strong></div>
-                <div class='feedback-related'>
-                    ⚠️ 次回は関連語から出題: {''.join([f"<span>{r}</span>" for r in q.get('related', [])])}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            qs = QUIZ_DATA.get(self.mode, []).copy()
+            random.shuffle(qs)
+            return qs
 
-        # ライフ切れチェック
-        if mode == "speedrun" and st.session_state.lives <= 0:
-            st.warning("💀 ライフがなくなりました！")
-            if st.button("🏁 結果を見る", use_container_width=True):
-                st.session_state.screen = "result"
-                st.rerun()
+    def _build(self):
+        # ヘッダー
+        hdr = tk.Frame(self, bg=BG_ACCENT)
+        hdr.pack(fill="x")
+        tk.Button(hdr, text="← ホーム", font=FONT_SMALL, bg=BG_ACCENT,
+                  fg=COLOR_WHITE, bd=0, padx=12, pady=6, cursor="hand2",
+                  activebackground=COLOR_GOLD, activeforeground=BG_MAIN,
+                  command=self.master._show_home).pack(side="left", padx=8, pady=6)
+
+        mode_label = self.mode if self.mode != "retry" else "やり直し（間違い復習）"
+        tk.Label(hdr, text=f"📚 {mode_label}", font=FONT_SMALL,
+                 bg=BG_ACCENT, fg=COLOR_GOLD).pack(side="left", padx=4)
+
+        self.score_label = tk.Label(hdr, text="", font=FONT_SMALL,
+                                    bg=BG_ACCENT, fg=COLOR_WHITE)
+        self.score_label.pack(side="right", padx=16, pady=6)
+
+        # プログレスバー
+        self.prog_var = tk.DoubleVar(value=0)
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Gold.Horizontal.TProgressbar",
+                        troughcolor=BG_CARD, background=COLOR_GOLD, thickness=6)
+        self.prog = ttk.Progressbar(self, variable=self.prog_var, maximum=self.total,
+                                    style="Gold.Horizontal.TProgressbar")
+        self.prog.pack(fill="x")
+
+        # 問題エリア
+        self.q_frame = tk.Frame(self, bg=BG_MAIN)
+        self.q_frame.pack(fill="both", expand=True, padx=60, pady=20)
+
+        self.q_num_label = tk.Label(self.q_frame, text="", font=FONT_SMALL,
+                                    bg=BG_MAIN, fg=COLOR_GRAY)
+        self.q_num_label.pack(anchor="w")
+
+        self.q_label = tk.Label(self.q_frame, text="", font=FONT_HEAD, wraplength=750,
+                                bg=BG_MAIN, fg=COLOR_WHITE, justify="left", anchor="w")
+        self.q_label.pack(anchor="w", pady=(4, 20))
+
+        self.choice_frame = tk.Frame(self.q_frame, bg=BG_MAIN)
+        self.choice_frame.pack(fill="x")
+
+        self.exp_label = tk.Label(self.q_frame, text="", font=FONT_SMALL, wraplength=750,
+                                  bg=BG_CARD, fg=COLOR_WHITE, justify="left",
+                                  padx=16, pady=12, anchor="w")
+
+        self.next_btn = tk.Button(self.q_frame, text="次の問題 →", font=FONT_BTN,
+                                  bg=COLOR_GOLD, fg=COLOR_BTN_FG, bd=0,
+                                  padx=24, pady=10, cursor="hand2",
+                                  activebackground="#c9a04e",
+                                  command=self._next_question)
+
+        # 間違いタブ（下部）
+        self.wrong_frame = tk.Frame(self, bg=BG_MAIN)
+        self.wrong_frame.pack(fill="x", padx=60, pady=(0, 10))
+
+        self.wrong_tab_outer = tk.Frame(self.wrong_frame, bg=BG_MAIN)
+        self.wrong_tab_outer.pack(fill="x")
+        self.wrong_tab_label = tk.Label(self.wrong_tab_outer,
+                                        text="❌ 間違い: 0問", font=FONT_SMALL,
+                                        bg=COLOR_RED, fg=COLOR_WHITE,
+                                        padx=10, pady=4, cursor="hand2")
+        self.wrong_tab_label.pack(side="left")
+        self.wrong_tab_label.bind("<Button-1>", self._toggle_wrong_list)
+        self.wrong_list_frame = tk.Frame(self.wrong_frame, bg=BG_CARD)
+
+    def _show_question(self):
+        for w in self.choice_frame.winfo_children():
+            w.destroy()
+        self.exp_label.pack_forget()
+        self.next_btn.pack_forget()
+        self.answered = False
+
+        q = self.questions[self.idx]
+        self.prog_var.set(self.idx)
+        self.score_label.config(text=f"✅ {self.score} / {self.total}")
+        self.q_num_label.config(text=f"問 {self.idx + 1} / {self.total}  [{q.get('category','')}]")
+        self.q_label.config(text=q["question"])
+
+        choices = q.get("choices", [q["answer"]])
+        if len(choices) < 2:
+            choices = [q["answer"]]
+        random.shuffle(choices)
+
+        colors = ["#2d4a7a", "#2d4a7a", "#2d4a7a", "#2d4a7a"]
+        for i, c in enumerate(choices):
+            row = i // 2
+            col = i % 2
+            btn = tk.Button(self.choice_frame, text=c, font=FONT_BODY,
+                            bg=BG_CARD, fg=COLOR_WHITE, bd=0,
+                            wraplength=320, justify="center",
+                            padx=10, pady=14, cursor="hand2",
+                            activebackground=BG_ACCENT,
+                            command=lambda ans=c: self._check_answer(ans))
+            btn.grid(row=row, column=col, padx=8, pady=6, sticky="ew")
+            self.choice_frame.columnconfigure(col, weight=1)
+
+    def _check_answer(self, selected):
+        if self.answered:
+            return
+        self.answered = True
+        q = self.questions[self.idx]
+        correct = q["answer"]
+        is_correct = selected == correct
+
+        # ボタン色更新
+        for btn in self.choice_frame.winfo_children():
+            txt = btn.cget("text")
+            if txt == correct:
+                btn.config(bg=COLOR_GREEN, fg=COLOR_WHITE)
+            elif txt == selected and not is_correct:
+                btn.config(bg=COLOR_RED, fg=COLOR_WHITE)
+            btn.config(state="disabled", cursor="arrow")
+
+        # 解説
+        icon = "✅ 正解！" if is_correct else "❌ 不正解"
+        exp_text = f"{icon}\n\n{q.get('explanation', '')}"
+        self.exp_label.config(text=exp_text,
+                              bg=COLOR_GREEN if is_correct else COLOR_RED)
+        self.exp_label.pack(fill="x", pady=(12, 8))
+        self.next_btn.pack(anchor="e", pady=(0, 8))
+
+        if is_correct:
+            self.score += 1
+        else:
+            self.wrong_list.append(q)
+            self._update_wrong_tab()
+            # ノートへ自動追加
+            self._auto_add_note(q)
+
+        # 履歴保存
+        record = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "mode": self.mode,
+            "question": q["question"],
+            "answer": correct,
+            "selected": selected,
+            "correct": is_correct,
+            "choices": q.get("choices", []),
+            "explanation": q.get("explanation", ""),
+            "category": q.get("category", ""),
+        }
+        history = load_json(HISTORY_FILE)
+        history.append(record)
+        save_json(HISTORY_FILE, history)
+        self.master.history_records = history
+
+    def _next_question(self):
+        self.idx += 1
+        if self.idx >= self.total:
+            self._show_result()
+        else:
+            self._show_question()
+
+    def _show_result(self):
+        for w in self.winfo_children():
+            w.destroy()
+        ResultScreen(self.master, self.score, self.total, self.wrong_list, self.mode)
+
+    def _update_wrong_tab(self):
+        n = len(self.wrong_list)
+        self.wrong_tab_label.config(text=f"❌ 間違い: {n}問")
+        # リスト再描画
+        for w in self.wrong_list_frame.winfo_children():
+            w.destroy()
+        for q in self.wrong_list:
+            tk.Label(self.wrong_list_frame,
+                     text=f"• {q['question'][:40]}…  → 答: {q['answer']}",
+                     font=FONT_SMALL, bg=BG_CARD, fg=COLOR_WHITE,
+                     anchor="w", padx=10, pady=3).pack(fill="x")
+
+    def _toggle_wrong_list(self, event=None):
+        if self.wrong_list_frame.winfo_ismapped():
+            self.wrong_list_frame.pack_forget()
+        else:
+            self.wrong_list_frame.pack(fill="x")
+
+    def _auto_add_note(self, q):
+        notes = load_json(NOTES_FILE)
+        # 重複チェック
+        for n in notes:
+            if n.get("question") == q["question"]:
+                return
+        notes.append({
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "question": q["question"],
+            "answer": q["answer"],
+            "explanation": q.get("explanation", ""),
+            "category": q.get("category", ""),
+            "memo": "",
+        })
+        save_json(NOTES_FILE, notes)
+        self.master.notes = notes
+
+# ==============================
+# 結果画面
+# ==============================
+class ResultScreen(tk.Frame):
+    def __init__(self, master, score, total, wrong_list, mode):
+        super().__init__(master, bg=BG_MAIN)
+        self.pack(fill="both", expand=True)
+        self.score = score
+        self.total = total
+        self.wrong_list = wrong_list
+        self.mode = mode
+        self._build()
+
+    def _build(self):
+        pct = int(self.score / self.total * 100) if self.total else 0
+        stars = "⭐" * min(5, max(1, pct // 20))
+        result_color = COLOR_GREEN if pct >= 70 else COLOR_GOLD if pct >= 40 else COLOR_RED
+
+        tk.Label(self, text="結果発表", font=FONT_TITLE,
+                 bg=BG_MAIN, fg=COLOR_GOLD).pack(pady=(50, 10))
+        tk.Label(self, text=f"{self.score} / {self.total}  ({pct}%)",
+                 font=("Georgia", 36, "bold"), bg=BG_MAIN, fg=result_color).pack()
+        tk.Label(self, text=stars, font=("Arial", 28),
+                 bg=BG_MAIN, fg=COLOR_GOLD).pack(pady=10)
+
+        msg = ("完璧！素晴らしい！🎉" if pct == 100 else
+               "よくできました！😊" if pct >= 70 else
+               "もう少しで合格！💪" if pct >= 40 else
+               "復習しよう！📚")
+        tk.Label(self, text=msg, font=FONT_HEAD, bg=BG_MAIN, fg=COLOR_WHITE).pack(pady=6)
+
+        # 間違い一覧
+        if self.wrong_list:
+            tk.Label(self, text="── 間違えた問題 ──",
+                     font=FONT_SMALL, bg=BG_MAIN, fg=COLOR_GRAY).pack(pady=(20, 6))
+            canvas = tk.Canvas(self, bg=BG_CARD, height=160, highlightthickness=0)
+            sb = tk.Scrollbar(self, orient="vertical", command=canvas.yview)
+            canvas.configure(yscrollcommand=sb.set)
+            sb.pack(side="right", fill="y", padx=(0, 40))
+            canvas.pack(fill="x", padx=60)
+            inner = tk.Frame(canvas, bg=BG_CARD)
+            canvas.create_window((0, 0), window=inner, anchor="nw")
+            for q in self.wrong_list:
+                tk.Label(inner,
+                         text=f"❌  {q['question'][:55]}　→ {q['answer']}",
+                         font=FONT_SMALL, bg=BG_CARD, fg=COLOR_WHITE,
+                         anchor="w", padx=12, pady=4).pack(fill="x")
+            inner.update_idletasks()
+            canvas.config(scrollregion=canvas.bbox("all"))
+
+        # ボタン
+        btn_frame = tk.Frame(self, bg=BG_MAIN)
+        btn_frame.pack(pady=30)
+
+        def make_btn(text, cmd, bg=BG_ACCENT, fg=COLOR_WHITE):
+            tk.Button(btn_frame, text=text, font=FONT_BTN, bg=bg, fg=fg, bd=0,
+                      padx=20, pady=10, cursor="hand2",
+                      activebackground=COLOR_GOLD, activeforeground=BG_MAIN,
+                      command=cmd).pack(side="left", padx=8)
+
+        make_btn("🔄 同じモードで再挑戦", lambda: self.master._show_quiz(self.mode),
+                 COLOR_GOLD, COLOR_BTN_FG)
+        make_btn("📝 ノートを見る", self.master._show_notes)
+        make_btn("🏠 ホームへ", self.master._show_home)
+
+# ==============================
+# 履歴画面
+# ==============================
+class HistoryScreen(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master, bg=BG_MAIN)
+        self.pack(fill="both", expand=True)
+        self.records = load_json(HISTORY_FILE)
+        self._build()
+
+    def _build(self):
+        hdr = tk.Frame(self, bg=BG_ACCENT)
+        hdr.pack(fill="x")
+        tk.Button(hdr, text="← ホーム", font=FONT_SMALL, bg=BG_ACCENT,
+                  fg=COLOR_WHITE, bd=0, padx=12, pady=6, cursor="hand2",
+                  activebackground=COLOR_GOLD, activeforeground=BG_MAIN,
+                  command=self.master._show_home).pack(side="left", padx=8, pady=6)
+        tk.Label(hdr, text="📋 解答履歴", font=FONT_HEAD,
+                 bg=BG_ACCENT, fg=COLOR_GOLD).pack(side="left")
+
+        if not self.records:
+            tk.Label(self, text="まだ解答履歴がありません。", font=FONT_BODY,
+                     bg=BG_MAIN, fg=COLOR_GRAY).pack(pady=60)
             return
 
-        # 次へ / 終了
-        is_last = (qi + 1 >= total)
-        btn_label = "🏁 結果を見る" if is_last else "次の問題 →"
-        
-        if st.button(btn_label, use_container_width=True, type="primary"):
-            if is_last:
-                st.session_state.screen = "result"
-            else:
-                st.session_state.current_q += 1
-                st.session_state.answered = False
-                st.session_state.last_correct = None
-                st.session_state.time_expired = False
-                st.session_state.q_start_time = time.time()
-                # スピードラン：問題が進むごとにレベルアップ
-                if mode == "speedrun":
-                    new_level = (st.session_state.current_q // 3) + 1
-                    st.session_state.speedrun_level = min(new_level, 8)
-            st.rerun()
+        # 統計
+        total = len(self.records)
+        correct = sum(1 for r in self.records if r["correct"])
+        tk.Label(self, text=f"総問数: {total}問 　✅ 正解: {correct}問 　❌ 不正解: {total - correct}問",
+                 font=FONT_BODY, bg=BG_MAIN, fg=COLOR_WHITE).pack(pady=12)
 
+        # テーブル
+        cols = ("日時", "モード", "問題", "答え", "選択", "結果")
+        frame = tk.Frame(self, bg=BG_MAIN)
+        frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
-# ─── 結果画面 ────────────────────────────────────────────────
-def render_result():
-    score = st.session_state.score
-    total = len(st.session_state.questions)
-    pct = (score / total * 100) if total > 0 else 0
-    elapsed = time.time() - (st.session_state.start_time or time.time())
-    mode_names = {"normal": "ノーマル", "speedrun": "スピードラン", "retry": "やり直し"}
-    
-    # 評価
-    if pct >= 90:
-        grade, grade_color, msg = "S", "#f59e0b", "完璧！マスタークラス！"
-    elif pct >= 75:
-        grade, grade_color, msg = "A", "#10b981", "素晴らしい！"
-    elif pct >= 60:
-        grade, grade_color, msg = "B", "#06b6d4", "なかなか良い！"
-    elif pct >= 40:
-        grade, grade_color, msg = "C", "#7c3aed", "もう少し頑張ろう"
-    else:
-        grade, grade_color, msg = "D", "#ef4444", "要復習！"
+        style = ttk.Style()
+        style.configure("Dark.Treeview", background=BG_CARD, fieldbackground=BG_CARD,
+                        foreground=COLOR_WHITE, rowheight=28, font=FONT_SMALL)
+        style.configure("Dark.Treeview.Heading", background=BG_ACCENT,
+                        foreground=COLOR_GOLD, font=FONT_SMALL)
+        style.map("Dark.Treeview", background=[("selected", "#2d4a7a")])
 
-    st.markdown(f"""
-    <div class='result-card'>
-        <div style='font-size:0.8rem;color:#64748b;letter-spacing:2px;text-transform:uppercase;margin-bottom:1rem;'>
-            {mode_names.get(st.session_state.mode, "")} | {int(elapsed)}秒
-        </div>
-        <div class='result-score'>{score} / {total}</div>
-        <div class='result-grade' style='color:{grade_color};'>ランク {grade}　{msg}</div>
-        <div style='margin-top:1rem;color:#94a3b8;font-size:0.9rem;'>
-            正答率 {pct:.0f}%　|　最大連続正解 {st.session_state.best_streak}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        tree = ttk.Treeview(frame, columns=cols, show="headings",
+                            style="Dark.Treeview", height=18)
+        sb = tk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=sb.set)
+        sb.pack(side="right", fill="y")
+        tree.pack(fill="both", expand=True)
 
-    # 間違えた単語リスト
-    session_missed = [q for q in st.session_state.questions 
-                      if q not in [w for w in st.session_state.missed_words 
-                                   if w not in st.session_state.questions]] 
-    # 今回の間違い
-    current_missed = []
-    for q in st.session_state.questions:
-        if q in st.session_state.missed_words:
-            current_missed.append(q)
+        widths = [120, 120, 280, 140, 140, 60]
+        for col, w in zip(cols, widths):
+            tree.heading(col, text=col)
+            tree.column(col, width=w, anchor="center" if col in ("モード", "結果") else "w")
 
-    if current_missed:
-        st.markdown("<div class='miss-list'>", unsafe_allow_html=True)
-        st.markdown("**📌 今回間違えた単語**")
-        for m in current_missed:
-            related_str = " / ".join(m.get("related", [])[:3])
-            st.markdown(f"""
-            <div class='miss-item'>
-                <span class='miss-word'>{m['word']}</span>
-                <span class='miss-meaning'>{m['meaning']}</span>
-            </div>
-            <div style='font-size:0.75rem;color:#475569;padding-bottom:0.5rem;padding-left:0.5rem;'>
-                類義語: {related_str}
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        for r in reversed(self.records):
+            result = "✅" if r["correct"] else "❌"
+            tree.insert("", "end", values=(
+                r.get("date", ""),
+                r.get("mode", ""),
+                r.get("question", "")[:35],
+                r.get("answer", ""),
+                r.get("selected", ""),
+                result,
+            ))
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🏠 ホームに戻る", use_container_width=True):
-            st.session_state.screen = "home"
-            st.rerun()
-    with c2:
-        has_missed = len(st.session_state.missed_words) > 0
-        if st.button(f"🔄 やり直しモード {'(' + str(len(st.session_state.missed_words)) + '語)' if has_missed else ''}", 
-                     use_container_width=True, disabled=not has_missed):
-            start_game("retry", st.session_state.word_mode, st.session_state.difficulty)
+        # クリアボタン
+        tk.Button(self, text="🗑 履歴を全消去", font=FONT_SMALL, bg=COLOR_RED,
+                  fg=COLOR_WHITE, bd=0, padx=14, pady=6, cursor="hand2",
+                  command=self._clear_history).pack(pady=8)
 
+    def _clear_history(self):
+        if messagebox.askyesno("確認", "履歴をすべて消去しますか？"):
+            save_json(HISTORY_FILE, [])
+            self.master.history_records = []
+            self.master._show_history()
 
-# ─── サイドバー ──────────────────────────────────────────────
-def render_sidebar():
-    with st.sidebar:
-        st.markdown("### 📊 セッション統計")
-        st.metric("累積ミス単語", len(st.session_state.missed_words))
-        st.metric("最大連続正解", st.session_state.best_streak)
-        
-        st.markdown("---")
-        st.markdown("### ℹ️ 難易度ガイド")
-        levels = [
-            ("🟢 Lv.1", "基礎", "高校基礎〜日常語"),
-            ("🔵 Lv.2", "中級", "大学受験基礎"),
-            ("🟡 Lv.3", "上級", "難関私大レベル"),
-            ("🔴 Lv.4", "難関大", "東大・京大・旧帝大"),
-        ]
-        for icon, name, desc in levels:
-            st.markdown(f"{icon} **{name}** — {desc}")
-        
-        st.markdown("---")
-        st.markdown("### 🎮 ゲームモード説明")
-        st.markdown("""
-- **ノーマル**: 制限なし、じっくり学習
-- **スピードラン**: 制限時間付き、進むほど短くなる
-- **やり直し**: 間違えた単語の関連語を重点出題
-        """)
-        
-        if st.session_state.missed_words:
-            if st.button("🗑️ 間違いリストをリセット"):
-                st.session_state.missed_words = []
-                st.session_state.wrong_related = []
-                st.rerun()
+# ==============================
+# ノート画面
+# ==============================
+class NotesScreen(tk.Frame):
+    def __init__(self, master):
+        super().__init__(master, bg=BG_MAIN)
+        self.pack(fill="both", expand=True)
+        self.notes = load_json(NOTES_FILE)
+        self.selected_idx = None
+        self._build()
 
+    def _build(self):
+        hdr = tk.Frame(self, bg=BG_ACCENT)
+        hdr.pack(fill="x")
+        tk.Button(hdr, text="← ホーム", font=FONT_SMALL, bg=BG_ACCENT,
+                  fg=COLOR_WHITE, bd=0, padx=12, pady=6, cursor="hand2",
+                  activebackground=COLOR_GOLD, activeforeground=BG_MAIN,
+                  command=self.master._show_home).pack(side="left", padx=8, pady=6)
+        tk.Label(hdr, text="📝 ノート（間違い問題まとめ）", font=FONT_HEAD,
+                 bg=BG_ACCENT, fg=COLOR_GOLD).pack(side="left")
+        tk.Button(hdr, text="＋ 手動追加", font=FONT_SMALL, bg=COLOR_GOLD,
+                  fg=COLOR_BTN_FG, bd=0, padx=12, pady=4, cursor="hand2",
+                  command=self._add_manual).pack(side="right", padx=8, pady=6)
 
-# ─── メインルーター ──────────────────────────────────────────
-def main():
-    init_session()
-    render_sidebar()
-    
-    screen = st.session_state.screen
-    if screen == "home":
-        render_home()
-    elif screen == "game":
-        render_game()
-    elif screen == "result":
-        render_result()
-    
-    # スピードランは自動リフレッシュが必要
-    if st.session_state.screen == "game" and st.session_state.mode == "speedrun" \
-       and not st.session_state.answered:
-        time.sleep(0.1)
-        st.rerun()
+        main = tk.Frame(self, bg=BG_MAIN)
+        main.pack(fill="both", expand=True, padx=20, pady=10)
 
+        # 左: ノート一覧
+        left = tk.Frame(main, bg=BG_CARD, width=300)
+        left.pack(side="left", fill="y", padx=(0, 10))
+        left.pack_propagate(False)
 
+        tk.Label(left, text="ノート一覧", font=FONT_SMALL,
+                 bg=BG_CARD, fg=COLOR_GOLD).pack(pady=8)
+
+        self.listbox = tk.Listbox(left, bg=BG_CARD, fg=COLOR_WHITE,
+                                  selectbackground=BG_ACCENT, font=FONT_SMALL,
+                                  bd=0, highlightthickness=0, activestyle="none")
+        sb_l = tk.Scrollbar(left, orient="vertical", command=self.listbox.yview)
+        self.listbox.configure(yscrollcommand=sb_l.set)
+        sb_l.pack(side="right", fill="y")
+        self.listbox.pack(fill="both", expand=True, padx=6, pady=(0, 8))
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+
+        # 右: 詳細・メモ編集
+        right = tk.Frame(main, bg=BG_MAIN)
+        right.pack(side="left", fill="both", expand=True)
+
+        self.detail_q = tk.Label(right, text="", font=FONT_HEAD, wraplength=520,
+                                 bg=BG_MAIN, fg=COLOR_WHITE, justify="left", anchor="w")
+        self.detail_q.pack(anchor="w", pady=(0, 6))
+
+        self.detail_a = tk.Label(right, text="", font=FONT_BODY, wraplength=520,
+                                 bg=BG_MAIN, fg=COLOR_GOLD, justify="left", anchor="w")
+        self.detail_a.pack(anchor="w", pady=(0, 6))
+
+        self.detail_exp = tk.Label(right, text="", font=FONT_SMALL, wraplength=520,
+                                   bg=BG_CARD, fg=COLOR_WHITE, justify="left",
+                                   padx=12, pady=10, anchor="w")
+        self.detail_exp.pack(fill="x", pady=(0, 10))
+
+        tk.Label(right, text="📌 自分のメモ", font=FONT_SMALL,
+                 bg=BG_MAIN, fg=COLOR_GRAY).pack(anchor="w")
+        self.memo_text = scrolledtext.ScrolledText(right, font=FONT_SMALL,
+                                                   bg=BG_CARD, fg=COLOR_WHITE,
+                                                   insertbackground=COLOR_WHITE,
+                                                   height=5, wrap="word", bd=0)
+        self.memo_text.pack(fill="x", pady=6)
+
+        btn_row = tk.Frame(right, bg=BG_MAIN)
+        btn_row.pack(anchor="w", pady=6)
+        tk.Button(btn_row, text="💾 メモを保存", font=FONT_SMALL, bg=COLOR_GOLD,
+                  fg=COLOR_BTN_FG, bd=0, padx=14, pady=6, cursor="hand2",
+                  command=self._save_memo).pack(side="left", padx=(0, 8))
+        tk.Button(btn_row, text="🗑 このノートを削除", font=FONT_SMALL, bg=COLOR_RED,
+                  fg=COLOR_WHITE, bd=0, padx=14, pady=6, cursor="hand2",
+                  command=self._delete_note).pack(side="left")
+
+        self._refresh_list()
+
+    def _refresh_list(self):
+        self.listbox.delete(0, "end")
+        if not self.notes:
+            self.listbox.insert("end", "（ノートが空です）")
+        for n in self.notes:
+            self.listbox.insert("end", f"  {n.get('category','')}: {n['question'][:28]}…")
+
+    def _on_select(self, event):
+        sel = self.listbox.curselection()
+        if not sel or not self.notes:
+            return
+        self.selected_idx = sel[0]
+        n = self.notes[self.selected_idx]
+        self.detail_q.config(text=f"Q: {n['question']}")
+        self.detail_a.config(text=f"答え: {n['answer']}")
+        self.detail_exp.config(text=n.get("explanation", ""))
+        self.memo_text.delete("1.0", "end")
+        self.memo_text.insert("1.0", n.get("memo", ""))
+
+    def _save_memo(self):
+        if self.selected_idx is None:
+            return
+        self.notes[self.selected_idx]["memo"] = self.memo_text.get("1.0", "end").strip()
+        save_json(NOTES_FILE, self.notes)
+        messagebox.showinfo("保存", "メモを保存しました！")
+
+    def _delete_note(self):
+        if self.selected_idx is None:
+            return
+        if messagebox.askyesno("確認", "このノートを削除しますか？"):
+            self.notes.pop(self.selected_idx)
+            save_json(NOTES_FILE, self.notes)
+            self.selected_idx = None
+            self._refresh_list()
+            self.detail_q.config(text="")
+            self.detail_a.config(text="")
+            self.detail_exp.config(text="")
+            self.memo_text.delete("1.0", "end")
+
+    def _add_manual(self):
+        win = tk.Toplevel(self)
+        win.title("ノートを手動追加")
+        win.configure(bg=BG_MAIN)
+        win.geometry("480x380")
+
+        def row(label):
+            tk.Label(win, text=label, font=FONT_SMALL, bg=BG_MAIN, fg=COLOR_GOLD
+                     ).pack(anchor="w", padx=20, pady=(10, 2))
+
+        row("問題文")
+        q_entry = tk.Entry(win, font=FONT_BODY, bg=BG_CARD, fg=COLOR_WHITE,
+                           insertbackground=COLOR_WHITE, bd=0)
+        q_entry.pack(fill="x", padx=20)
+
+        row("答え")
+        a_entry = tk.Entry(win, font=FONT_BODY, bg=BG_CARD, fg=COLOR_WHITE,
+                           insertbackground=COLOR_WHITE, bd=0)
+        a_entry.pack(fill="x", padx=20)
+
+        row("説明・解説")
+        e_entry = scrolledtext.ScrolledText(win, font=FONT_SMALL, bg=BG_CARD,
+                                            fg=COLOR_WHITE, insertbackground=COLOR_WHITE,
+                                            height=4, wrap="word", bd=0)
+        e_entry.pack(fill="x", padx=20)
+
+        row("カテゴリ（任意）")
+        c_entry = tk.Entry(win, font=FONT_BODY, bg=BG_CARD, fg=COLOR_WHITE,
+                           insertbackground=COLOR_WHITE, bd=0)
+        c_entry.pack(fill="x", padx=20)
+
+        def save():
+            note = {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "question": q_entry.get().strip(),
+                "answer": a_entry.get().strip(),
+                "explanation": e_entry.get("1.0", "end").strip(),
+                "category": c_entry.get().strip(),
+                "memo": "",
+            }
+            if not note["question"]:
+                messagebox.showwarning("入力エラー", "問題文を入力してください。")
+                return
+            self.notes.append(note)
+            save_json(NOTES_FILE, self.notes)
+            self._refresh_list()
+            win.destroy()
+
+        tk.Button(win, text="💾 追加", font=FONT_BTN, bg=COLOR_GOLD, fg=COLOR_BTN_FG,
+                  bd=0, padx=20, pady=8, cursor="hand2", command=save).pack(pady=12)
+
+# ==============================
+# 起動
+# ==============================
 if __name__ == "__main__":
-    main()
+    app = HistoryQuizApp()
+    app.mainloop()

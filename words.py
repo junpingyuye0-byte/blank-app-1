@@ -1,119 +1,292 @@
-"""
-英単語データベース
-難易度: 1=基礎, 2=中級, 3=上級, 4=難関大学レベル
-各単語: {word, meaning, options, related, idioms}
-"""
+# 世界史クイズデータ
 
-WORD_DATABASE = {
-    1: [  # 基礎レベル
-        {"word": "happy", "meaning": "幸せな", "options": ["悲しい", "幸せな", "怒った", "眠い"], "related": ["joyful", "glad", "cheerful"], "difficulty": 1},
-        {"word": "beautiful", "meaning": "美しい", "options": ["醜い", "大きい", "美しい", "小さい"], "related": ["gorgeous", "lovely", "pretty"], "difficulty": 1},
-        {"word": "strong", "meaning": "強い", "options": ["弱い", "強い", "速い", "遅い"], "related": ["powerful", "mighty", "robust"], "difficulty": 1},
-        {"word": "important", "meaning": "重要な", "options": ["つまらない", "重要な", "軽い", "古い"], "related": ["significant", "crucial", "vital"], "difficulty": 1},
-        {"word": "difficult", "meaning": "難しい", "options": ["簡単な", "楽しい", "難しい", "新しい"], "related": ["hard", "challenging", "complex"], "difficulty": 1},
-        {"word": "friend", "meaning": "友人", "options": ["敵", "友人", "家族", "先生"], "related": ["companion", "ally", "buddy"], "difficulty": 1},
-        {"word": "travel", "meaning": "旅行する", "options": ["食べる", "旅行する", "眠る", "働く"], "related": ["journey", "voyage", "trip"], "difficulty": 1},
-        {"word": "learn", "meaning": "学ぶ", "options": ["忘れる", "走る", "学ぶ", "見る"], "related": ["study", "acquire", "grasp"], "difficulty": 1},
-        {"word": "freedom", "meaning": "自由", "options": ["束縛", "自由", "平和", "戦争"], "related": ["liberty", "independence", "autonomy"], "difficulty": 1},
-        {"word": "change", "meaning": "変化する", "options": ["維持する", "変化する", "終わる", "始まる"], "related": ["alter", "transform", "modify"], "difficulty": 1},
-        {"word": "speak", "meaning": "話す", "options": ["聞く", "話す", "書く", "読む"], "related": ["talk", "utter", "express"], "difficulty": 1},
-        {"word": "nature", "meaning": "自然", "options": ["都市", "自然", "科学", "文化"], "related": ["environment", "wilderness", "ecology"], "difficulty": 1},
-        {"word": "success", "meaning": "成功", "options": ["失敗", "成功", "努力", "希望"], "related": ["achievement", "triumph", "victory"], "difficulty": 1},
-        {"word": "problem", "meaning": "問題", "options": ["解決策", "問題", "答え", "質問"], "related": ["issue", "challenge", "difficulty"], "difficulty": 1},
-        {"word": "remember", "meaning": "覚えている", "options": ["忘れる", "覚えている", "考える", "知る"], "related": ["recall", "recollect", "memorize"], "difficulty": 1},
+QUIZ_DATA = {
+    "年号": [
+        {
+            "question": "フランス革命が始まった年は？",
+            "answer": "1789",
+            "choices": ["1776", "1789", "1804", "1815"],
+            "explanation": "1789年7月14日、バスティーユ牢獄の襲撃によりフランス革命が始まった。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "第一次世界大戦が終結した年は？",
+            "answer": "1918",
+            "choices": ["1914", "1916", "1918", "1920"],
+            "explanation": "1918年11月11日、ドイツが休戦協定に署名し第一次世界大戦が終結した。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "ローマ帝国が東西に分裂した年は？",
+            "answer": "395",
+            "choices": ["313", "395", "476", "527"],
+            "explanation": "395年、テオドシウス1世の死後、ローマ帝国は東西に分裂した。",
+            "category": "古代ローマ"
+        },
+        {
+            "question": "コロンブスがアメリカ大陸に到達した年は？",
+            "answer": "1492",
+            "choices": ["1488", "1492", "1498", "1522"],
+            "explanation": "1492年10月12日、コロンブスはバハマ諸島に到達し、ヨーロッパ人として初めてアメリカ大陸に上陸した。",
+            "category": "大航海時代"
+        },
+        {
+            "question": "ロシア革命（十月革命）が起きた年は？",
+            "answer": "1917",
+            "choices": ["1905", "1914", "1917", "1919"],
+            "explanation": "1917年11月（旧暦10月）、ボルシェビキがペトログラードで武装蜂起しロシア革命が起きた。",
+            "category": "近代ロシア"
+        },
+        {
+            "question": "第二次世界大戦が始まった年は？",
+            "answer": "1939",
+            "choices": ["1937", "1938", "1939", "1941"],
+            "explanation": "1939年9月1日、ドイツがポーランドに侵攻し第二次世界大戦が始まった。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "ベルリンの壁が崩壊した年は？",
+            "answer": "1989",
+            "choices": ["1985", "1987", "1989", "1991"],
+            "explanation": "1989年11月9日、東ドイツ政府が旅行の自由化を発表し、市民がベルリンの壁を崩壊させた。",
+            "category": "冷戦"
+        },
+        {
+            "question": "ナポレオンがワーテルローの戦いで敗れた年は？",
+            "answer": "1815",
+            "choices": ["1805", "1812", "1813", "1815"],
+            "explanation": "1815年6月18日、ワーテルローの戦いでナポレオンは連合軍に敗れ、皇帝の座を追われた。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "国際連合（UN）が設立された年は？",
+            "answer": "1945",
+            "choices": ["1919", "1939", "1945", "1948"],
+            "explanation": "1945年10月24日、国連憲章が発効し国際連合が正式に設立された。",
+            "category": "現代"
+        },
+        {
+            "question": "オスマン帝国が滅亡した年は？",
+            "answer": "1922",
+            "choices": ["1908", "1918", "1920", "1922"],
+            "explanation": "1922年11月1日、大国民議会がスルタン制を廃止し、オスマン帝国は滅亡した。",
+            "category": "近代中東"
+        },
     ],
-    2: [  # 中級レベル
-        {"word": "analyze", "meaning": "分析する", "options": ["合成する", "分析する", "破壊する", "構築する"], "related": ["examine", "investigate", "scrutinize"], "difficulty": 2},
-        {"word": "enhance", "meaning": "高める", "options": ["低下させる", "高める", "維持する", "減少する"], "related": ["improve", "boost", "amplify"], "difficulty": 2},
-        {"word": "significant", "meaning": "重要な・著しい", "options": ["些細な", "重要な・著しい", "一般的な", "曖昧な"], "related": ["substantial", "considerable", "notable"], "difficulty": 2},
-        {"word": "demonstrate", "meaning": "示す・証明する", "options": ["隠す", "示す・証明する", "否定する", "疑う"], "related": ["illustrate", "exhibit", "prove"], "difficulty": 2},
-        {"word": "establish", "meaning": "確立する", "options": ["廃止する", "確立する", "疑う", "変更する"], "related": ["found", "institute", "constitute"], "difficulty": 2},
-        {"word": "evaluate", "meaning": "評価する", "options": ["無視する", "評価する", "作成する", "破棄する"], "related": ["assess", "appraise", "judge"], "difficulty": 2},
-        {"word": "implement", "meaning": "実施する", "options": ["計画する", "実施する", "中止する", "設計する"], "related": ["execute", "apply", "carry out"], "difficulty": 2},
-        {"word": "influence", "meaning": "影響する", "options": ["影響する", "無関係である", "反対する", "支持する"], "related": ["affect", "impact", "shape"], "difficulty": 2},
-        {"word": "interpret", "meaning": "解釈する", "options": ["誤解する", "解釈する", "無視する", "記録する"], "related": ["construe", "decipher", "translate"], "difficulty": 2},
-        {"word": "maintain", "meaning": "維持する", "options": ["破壊する", "維持する", "創造する", "変更する"], "related": ["sustain", "preserve", "uphold"], "difficulty": 2},
-        {"word": "perceive", "meaning": "知覚する", "options": ["無視する", "知覚する", "想像する", "否定する"], "related": ["sense", "observe", "recognize"], "difficulty": 2},
-        {"word": "acquire", "meaning": "習得する・獲得する", "options": ["失う", "習得する・獲得する", "破壊する", "与える"], "related": ["obtain", "gain", "attain"], "difficulty": 2},
-        {"word": "generate", "meaning": "生み出す", "options": ["消費する", "生み出す", "削除する", "保存する"], "related": ["produce", "create", "yield"], "difficulty": 2},
-        {"word": "indicate", "meaning": "示す・指し示す", "options": ["隠す", "示す・指し示す", "否定する", "無視する"], "related": ["suggest", "signify", "point to"], "difficulty": 2},
-        {"word": "potential", "meaning": "潜在的な・可能性", "options": ["実現した", "潜在的な・可能性", "明白な", "限定された"], "related": ["possible", "latent", "prospective"], "difficulty": 2},
+    "人物名": [
+        {
+            "question": "「我思う、ゆえに我あり」という言葉で有名なフランスの哲学者は？",
+            "answer": "デカルト",
+            "choices": ["ロック", "デカルト", "ルソー", "ヴォルテール"],
+            "explanation": "ルネ・デカルト（1596-1650）はフランスの哲学者・数学者で、近代哲学の父と呼ばれる。",
+            "category": "近代哲学"
+        },
+        {
+            "question": "進化論を提唱したイギリスの自然科学者は？",
+            "answer": "ダーウィン",
+            "choices": ["ニュートン", "ダーウィン", "ファラデー", "ハクスリー"],
+            "explanation": "チャールズ・ダーウィン（1809-1882）は1859年に「種の起源」を出版し、自然選択による進化論を提唱した。",
+            "category": "科学史"
+        },
+        {
+            "question": "アメリカ独立宣言の起草に中心的役割を果たし、第3代大統領になった人物は？",
+            "answer": "ジェファーソン",
+            "choices": ["ワシントン", "ハミルトン", "ジェファーソン", "マディソン"],
+            "explanation": "トーマス・ジェファーソン（1743-1826）は独立宣言の主要起草者で、1801年から1809年まで第3代大統領を務めた。",
+            "category": "アメリカ独立"
+        },
+        {
+            "question": "「資本論」を著したドイツの思想家は？",
+            "answer": "マルクス",
+            "choices": ["エンゲルス", "レーニン", "マルクス", "ヘーゲル"],
+            "explanation": "カール・マルクス（1818-1883）は「資本論」を著し、共産主義思想の基礎を築いた。",
+            "category": "近代思想"
+        },
+        {
+            "question": "インドの独立運動を非暴力・不服従で指導した人物は？",
+            "answer": "ガンジー",
+            "choices": ["ネルー", "ガンジー", "チャンドラ・ボース", "アンベードカル"],
+            "explanation": "マハトマ・ガンジー（1869-1948）は非暴力・不服従（サティヤーグラハ）の原則でインド独立運動を指導した。",
+            "category": "アジアの独立"
+        },
+        {
+            "question": "南アフリカのアパルトヘイト撤廃に貢献し、初の黒人大統領となった人物は？",
+            "answer": "マンデラ",
+            "choices": ["デクラーク", "マンデラ", "ツツ大主教", "ビコ"],
+            "explanation": "ネルソン・マンデラ（1918-2013）は27年間の獄中生活を経て釈放後、1994年に南アフリカ初の黒人大統領となった。",
+            "category": "現代アフリカ"
+        },
+        {
+            "question": "万有引力の法則を発見したイギリスの科学者は？",
+            "answer": "ニュートン",
+            "choices": ["ガリレオ", "ニュートン", "ライプニッツ", "ケプラー"],
+            "explanation": "アイザック・ニュートン（1643-1727）は万有引力の法則を発見し、「プリンキピア」で古典力学を体系化した。",
+            "category": "科学史"
+        },
+        {
+            "question": "百年戦争でフランスを勝利に導いた女性は？",
+            "answer": "ジャンヌ・ダルク",
+            "choices": ["エレオノール", "ジャンヌ・ダルク", "マルグリット", "イザボー"],
+            "explanation": "ジャンヌ・ダルク（1412-1431）は神の啓示を受けたと主張し、オルレアン包囲戦を解いてフランス軍を勝利に導いた。",
+            "category": "中世ヨーロッパ"
+        },
+        {
+            "question": "オスマン帝国を建国した人物は？",
+            "answer": "オスマン1世",
+            "choices": ["セリム1世", "スレイマン1世", "オスマン1世", "メフメト2世"],
+            "explanation": "オスマン1世（1258-1326頃）はアナトリアに小国を建て、のちに大帝国へと発展するオスマン朝の祖となった。",
+            "category": "中東史"
+        },
+        {
+            "question": "ペニシリンを発見したスコットランドの細菌学者は？",
+            "answer": "フレミング",
+            "choices": ["パスツール", "コッホ", "フレミング", "リスター"],
+            "explanation": "アレクサンダー・フレミング（1881-1955）は1928年にペニシリンを発見し、1945年にノーベル生理学・医学賞を受賞した。",
+            "category": "科学史"
+        },
     ],
-    3: [  # 上級レベル
-        {"word": "ambiguous", "meaning": "曖昧な", "options": ["明確な", "曖昧な", "単純な", "複雑な"], "related": ["equivocal", "vague", "obscure"], "difficulty": 3},
-        {"word": "benevolent", "meaning": "慈悲深い", "options": ["残酷な", "慈悲深い", "無関心な", "怒りやすい"], "related": ["charitable", "philanthropic", "altruistic"], "difficulty": 3},
-        {"word": "cogent", "meaning": "説得力のある", "options": ["説得力のない", "説得力のある", "複雑な", "単純な"], "related": ["compelling", "convincing", "persuasive"], "difficulty": 3},
-        {"word": "deliberate", "meaning": "意図的な・熟慮する", "options": ["偶然の", "意図的な・熟慮する", "衝動的な", "自然な"], "related": ["intentional", "calculated", "premeditated"], "difficulty": 3},
-        {"word": "eloquent", "meaning": "雄弁な", "options": ["無口な", "雄弁な", "無礼な", "退屈な"], "related": ["articulate", "expressive", "persuasive"], "difficulty": 3},
-        {"word": "ephemeral", "meaning": "はかない・一時的な", "options": ["永続的な", "はかない・一時的な", "重要な", "普遍的な"], "related": ["transient", "fleeting", "momentary"], "difficulty": 3},
-        {"word": "formidable", "meaning": "手ごわい・恐るべき", "options": ["か弱い", "手ごわい・恐るべき", "平凡な", "親切な"], "related": ["daunting", "intimidating", "redoubtable"], "difficulty": 3},
-        {"word": "gregarious", "meaning": "社交的な", "options": ["内向的な", "社交的な", "孤独な", "攻撃的な"], "related": ["sociable", "outgoing", "extroverted"], "difficulty": 3},
-        {"word": "meticulous", "meaning": "細心の注意を払う", "options": ["大雑把な", "細心の注意を払う", "のんきな", "無頓着な"], "related": ["thorough", "painstaking", "scrupulous"], "difficulty": 3},
-        {"word": "paradox", "meaning": "逆説", "options": ["定理", "逆説", "真実", "証明"], "related": ["contradiction", "anomaly", "irony"], "difficulty": 3},
-        {"word": "pervasive", "meaning": "広く浸透した", "options": ["限定的な", "広く浸透した", "表面的な", "一時的な"], "related": ["prevalent", "widespread", "ubiquitous"], "difficulty": 3},
-        {"word": "pragmatic", "meaning": "実用的な", "options": ["理想主義的な", "実用的な", "理論的な", "抽象的な"], "related": ["practical", "realistic", "utilitarian"], "difficulty": 3},
-        {"word": "reciprocal", "meaning": "相互の", "options": ["一方的な", "相互の", "独立した", "競争的な"], "related": ["mutual", "bilateral", "complementary"], "difficulty": 3},
-        {"word": "tenacious", "meaning": "粘り強い", "options": ["諦めやすい", "粘り強い", "優柔不断な", "怠惰な"], "related": ["persistent", "resolute", "steadfast"], "difficulty": 3},
-        {"word": "versatile", "meaning": "多才な・用途が広い", "options": ["専門的な", "多才な・用途が広い", "制限された", "一面的な"], "related": ["adaptable", "flexible", "multifaceted"], "difficulty": 3},
+    "出来事": [
+        {
+            "question": "1789年にフランスで起きた、絶対王政を打倒した革命は？",
+            "answer": "フランス革命",
+            "choices": ["名誉革命", "フランス革命", "アメリカ独立革命", "二月革命"],
+            "explanation": "フランス革命（1789-1799）は絶対王政を打倒し、自由・平等・博愛の理念をヨーロッパに広めた歴史的大事件。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "1618年から1648年まで続いた、ヨーロッパ全体を巻き込んだ宗教戦争は？",
+            "answer": "三十年戦争",
+            "choices": ["百年戦争", "七年戦争", "三十年戦争", "薔薇戦争"],
+            "explanation": "三十年戦争（1618-1648）はボヘミアの宗教問題から始まり、ヨーロッパ主要国を巻き込んだ。ウェストファリア条約で終結した。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "1215年にイングランド王ジョンが署名した、貴族の権利を保障した文書は？",
+            "answer": "マグナ・カルタ",
+            "choices": ["権利章典", "マグナ・カルタ", "独立宣言", "人権宣言"],
+            "explanation": "マグナ・カルタ（大憲章）は1215年、貴族がジョン王に署名させた文書で、法の支配と人権保護の原点とされる。",
+            "category": "中世ヨーロッパ"
+        },
+        {
+            "question": "1095年にローマ教皇ウルバヌス2世が呼びかけた、聖地奪還を目的とした遠征は？",
+            "answer": "十字軍",
+            "choices": ["レコンキスタ", "十字軍", "大北方戦争", "コンキスタドール"],
+            "explanation": "十字軍（1096-1291）はキリスト教世界がイスラム教徒からエルサレムを奪還するための一連の軍事遠征。",
+            "category": "中世ヨーロッパ"
+        },
+        {
+            "question": "1929年にアメリカで始まり、世界中に波及した経済危機は？",
+            "answer": "世界恐慌",
+            "choices": ["オイルショック", "世界恐慌", "アジア通貨危機", "リーマンショック"],
+            "explanation": "世界恐慌（1929-1930年代）はニューヨーク株式市場の暴落（暗黒の木曜日）をきっかけに全世界に波及した未曾有の経済危機。",
+            "category": "現代"
+        },
+        {
+            "question": "アメリカとソ連の核戦争に発展しかけた1962年の危機は？",
+            "answer": "キューバ危機",
+            "choices": ["ベトナム戦争", "朝鮮戦争", "キューバ危機", "ベルリン危機"],
+            "explanation": "キューバ危機（1962年）はソ連がキューバにミサイル基地を建設しようとしたことで起きた、核戦争寸前の13日間の危機。",
+            "category": "冷戦"
+        },
+        {
+            "question": "1517年、マルティン・ルターが始めたカトリック教会への批判運動は？",
+            "answer": "宗教改革",
+            "choices": ["ルネサンス", "宗教改革", "啓蒙主義", "反宗教改革"],
+            "explanation": "宗教改革はルターの「95カ条の論題」から始まり、プロテスタントの誕生とヨーロッパの宗教地図を塗り替えた。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "1869年に開通した、ヨーロッパとアジアを結ぶ運河は？",
+            "answer": "スエズ運河",
+            "choices": ["パナマ運河", "スエズ運河", "キール運河", "コリントス運河"],
+            "explanation": "スエズ運河は1869年にエジプトで開通し、ヨーロッパとアジアの航路を大幅に短縮した。",
+            "category": "近代史"
+        },
+        {
+            "question": "15〜16世紀にヨーロッパ人が新航路を開拓した時代を何という？",
+            "answer": "大航海時代",
+            "choices": ["ルネサンス", "大航海時代", "産業革命", "重商主義時代"],
+            "explanation": "大航海時代（15〜17世紀）はポルトガル・スペインを中心にヨーロッパ人が新航路・新大陸を探索した時代。",
+            "category": "大航海時代"
+        },
+        {
+            "question": "1776年にイギリスから独立を宣言した国は？",
+            "answer": "アメリカ合衆国",
+            "choices": ["カナダ", "オーストラリア", "アメリカ合衆国", "メキシコ"],
+            "explanation": "1776年7月4日、北米13植民地がイギリスからの独立を宣言し、アメリカ合衆国が誕生した。",
+            "category": "アメリカ独立"
+        },
     ],
-    4: [  # 難関大学レベル
-        {"word": "abstruse", "meaning": "難解な・理解しにくい", "options": ["平易な", "難解な・理解しにくい", "退屈な", "明快な"], "related": ["recondite", "esoteric", "arcane"], "difficulty": 4},
-        {"word": "ameliorate", "meaning": "改善する・緩和する", "options": ["悪化させる", "改善する・緩和する", "維持する", "破壊する"], "related": ["mitigate", "alleviate", "rectify"], "difficulty": 4},
-        {"word": "antithetical", "meaning": "正反対の", "options": ["類似した", "正反対の", "補完的な", "中立的な"], "related": ["contradictory", "diametrically opposed", "antithesis"], "difficulty": 4},
-        {"word": "circumlocution", "meaning": "遠回しな表現・婉曲表現", "options": ["直接表現", "遠回しな表現・婉曲表現", "省略表現", "専門用語"], "related": ["periphrasis", "verbosity", "euphemism"], "difficulty": 4},
-        {"word": "compendious", "meaning": "簡潔で包括的な", "options": ["冗長な", "簡潔で包括的な", "断片的な", "詳細な"], "related": ["concise", "succinct", "comprehensive"], "difficulty": 4},
-        {"word": "desultory", "meaning": "散漫な・脈絡のない", "options": ["集中した", "散漫な・脈絡のない", "系統的な", "計画的な"], "related": ["erratic", "haphazard", "rambling"], "difficulty": 4},
-        {"word": "disseminate", "meaning": "普及させる・広める", "options": ["抑制する", "普及させる・広める", "収集する", "隠蔽する"], "related": ["propagate", "promulgate", "diffuse"], "difficulty": 4},
-        {"word": "equanimity", "meaning": "平静・冷静さ", "options": ["動揺", "平静・冷静さ", "興奮", "不安"], "related": ["composure", "serenity", "imperturbability"], "difficulty": 4},
-        {"word": "exacerbate", "meaning": "悪化させる", "options": ["改善する", "悪化させる", "安定させる", "変容させる"], "related": ["aggravate", "intensify", "worsen"], "difficulty": 4},
-        {"word": "inimical", "meaning": "敵対的な・有害な", "options": ["友好的な", "敵対的な・有害な", "中立的な", "協力的な"], "related": ["hostile", "antagonistic", "detrimental"], "difficulty": 4},
-        {"word": "loquacious", "meaning": "おしゃべりな・多弁な", "options": ["無口な", "おしゃべりな・多弁な", "内向的な", "思慮深い"], "related": ["garrulous", "voluble", "verbose"], "difficulty": 4},
-        {"word": "obfuscate", "meaning": "曖昧にする・混乱させる", "options": ["明確にする", "曖昧にする・混乱させる", "簡略化する", "強調する"], "related": ["obscure", "confound", "bewilder"], "difficulty": 4},
-        {"word": "perspicacious", "meaning": "洞察力のある・明敏な", "options": ["鈍感な", "洞察力のある・明敏な", "無知な", "表面的な"], "related": ["discerning", "astute", "sagacious"], "difficulty": 4},
-        {"word": "propitious", "meaning": "好都合な・吉兆の", "options": ["不吉な", "好都合な・吉兆の", "中立的な", "予測不能な"], "related": ["auspicious", "favorable", "opportune"], "difficulty": 4},
-        {"word": "recalcitrant", "meaning": "強情な・反抗的な", "options": ["従順な", "強情な・反抗的な", "中立的な", "協力的な"], "related": ["obstinate", "refractory", "intractable"], "difficulty": 4},
-        {"word": "sanguine", "meaning": "楽観的な・血色の良い", "options": ["悲観的な", "楽観的な・血色の良い", "現実的な", "懐疑的な"], "related": ["optimistic", "confident", "buoyant"], "difficulty": 4},
-        {"word": "tendentious", "meaning": "偏った・党派的な", "options": ["公平な", "偏った・党派的な", "中立的な", "客観的な"], "related": ["biased", "partisan", "slanted"], "difficulty": 4},
-        {"word": "vicissitude", "meaning": "変転・浮き沈み", "options": ["安定", "変転・浮き沈み", "成功", "失敗"], "related": ["fluctuation", "upheaval", "vagary"], "difficulty": 4},
-    ]
-}
-
-# 熟語データベース
-IDIOM_DATABASE = {
-    1: [  # 基礎熟語
-        {"word": "break the ice", "meaning": "場の雰囲気をほぐす", "options": ["氷を壊す", "場の雰囲気をほぐす", "冷たくする", "始める"], "related": ["warm up", "get the ball rolling", "open up"], "difficulty": 1},
-        {"word": "hit the nail on the head", "meaning": "的を射る・ずばり言い当てる", "options": ["釘を打つ", "的を射る・ずばり言い当てる", "頭を叩く", "正確に行動する"], "related": ["be spot on", "hit the mark", "be right on target"], "difficulty": 1},
-        {"word": "under the weather", "meaning": "体の具合が悪い", "options": ["雨の中にいる", "体の具合が悪い", "天気が悪い", "落ち込んでいる"], "related": ["feel ill", "be sick", "feel off color"], "difficulty": 1},
-        {"word": "bite the bullet", "meaning": "歯を食いしばって耐える", "options": ["銃弾を噛む", "歯を食いしばって耐える", "危険を冒す", "食べることを我慢する"], "related": ["grin and bear it", "tough it out", "endure"], "difficulty": 1},
-        {"word": "piece of cake", "meaning": "朝飯前・とても簡単なこと", "options": ["ケーキの一切れ", "朝飯前・とても簡単なこと", "おやつの時間", "美味しいもの"], "related": ["easy as pie", "a walk in the park", "child's play"], "difficulty": 1},
-        {"word": "once in a blue moon", "meaning": "めったに〜ない", "options": ["青い月に一度", "めったに〜ない", "毎月一回", "月が青い時"], "related": ["rarely", "seldom", "hardly ever"], "difficulty": 1},
-        {"word": "spill the beans", "meaning": "秘密をばらす", "options": ["豆をこぼす", "秘密をばらす", "食べ物を落とす", "話を始める"], "related": ["let the cat out of the bag", "reveal a secret", "blow the lid off"], "difficulty": 1},
-        {"word": "kill two birds with one stone", "meaning": "一石二鳥", "options": ["二羽の鳥を殺す", "一石二鳥", "効率的に動く", "一つのことに集中する"], "related": ["two for one", "accomplish two goals", "be efficient"], "difficulty": 1},
+    "人物がやったこと": [
+        {
+            "question": "ナポレオン・ボナパルトが1804年に行ったことは？",
+            "answer": "フランス皇帝に即位した",
+            "choices": ["共和国を廃止し王政を復古した", "フランス皇帝に即位した", "ウィーン会議を主催した", "フランス革命を起こした"],
+            "explanation": "1804年12月2日、ナポレオンはノートルダム大聖堂でローマ教皇ピウス7世の前でフランス皇帝の冠を自ら頭に載せた。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "マルティン・ルターが1517年に行ったことは？",
+            "answer": "95カ条の論題を発表した",
+            "choices": ["新訳聖書を出版した", "95カ条の論題を発表した", "イエズス会を創設した", "トリエント公会議を開いた"],
+            "explanation": "1517年10月31日、ルターはヴィッテンベルク城教会の扉に95カ条の論題を貼り出し、カトリック教会の免罪符販売を批判した。",
+            "category": "宗教改革"
+        },
+        {
+            "question": "コペルニクスが提唱した天文学上の説は？",
+            "answer": "地動説",
+            "choices": ["天動説", "地動説", "進化論", "相対性理論"],
+            "explanation": "ニコラウス・コペルニクス（1473-1543）は地球が太陽の周りを回る地動説を提唱し、天文学に革命をもたらした。",
+            "category": "科学史"
+        },
+        {
+            "question": "アレクサンドロス大王が行った最大の功績は？",
+            "answer": "東方遠征でペルシア帝国を征服した",
+            "choices": ["ローマ帝国を建国した", "東方遠征でペルシア帝国を征服した", "中国を統一した", "カルタゴを滅ぼした"],
+            "explanation": "アレクサンドロス3世（前356-前323）はマケドニアを拠点に東方遠征を行い、ペルシア帝国を征服してインドまで版図を広げた。",
+            "category": "古代"
+        },
+        {
+            "question": "ウィンストン・チャーチルが第二次世界大戦中に行ったことは？",
+            "answer": "イギリス首相としてナチス・ドイツに徹底抗戦した",
+            "choices": ["ナチス・ドイツと和平交渉した", "イギリス首相としてナチス・ドイツに徹底抗戦した", "原爆投下を命令した", "ノルマンディー上陸作戦を指揮した"],
+            "explanation": "チャーチル（1874-1965）は1940年にイギリス首相に就任し、「決して降伏しない」と宣言してナチス・ドイツへの徹底抗戦を指導した。",
+            "category": "第二次世界大戦"
+        },
+        {
+            "question": "マルコ・ポーロが13世紀に行ったことは？",
+            "answer": "元（中国）を訪問し「東方見聞録」を著した",
+            "choices": ["アメリカ大陸を発見した", "元（中国）を訪問し「東方見聞録」を著した", "アフリカ大陸を一周した", "インド航路を開拓した"],
+            "explanation": "マルコ・ポーロ（1254-1324）はヴェネツィア商人で、元のフビライ・ハンに仕え、帰国後に「東方見聞録」を口述した。",
+            "category": "中世"
+        },
+        {
+            "question": "ガリレオ・ガリレイが科学史上行った重要なことは？",
+            "answer": "望遠鏡で天体観測を行い地動説を支持した",
+            "choices": ["万有引力の法則を発見した", "望遠鏡で天体観測を行い地動説を支持した", "電磁誘導の法則を発見した", "元素の周期表を作成した"],
+            "explanation": "ガリレオ（1564-1642）は望遠鏡を改良して天体観測を行い、木星の衛星やに月のクレーターを発見してコペルニクスの地動説を支持した。",
+            "category": "科学史"
+        },
+        {
+            "question": "ユリウス・カエサルが暗殺される前に行ったことは？",
+            "answer": "ガリア（現フランス）を征服した",
+            "choices": ["カルタゴを滅ぼした", "ガリア（現フランス）を征服した", "ブリタニア（イギリス）を完全征服した", "エジプトをローマ属州にした"],
+            "explanation": "カエサル（前100-前44）は前58〜前51年にかけてガリア戦争を行い、現在のフランスにあたるガリアを征服した。",
+            "category": "古代ローマ"
+        },
+        {
+            "question": "ビスマルクが19世紀後半に行った最大の業績は？",
+            "answer": "ドイツを統一しドイツ帝国を成立させた",
+            "choices": ["フランス第三共和政を樹立した", "ドイツを統一しドイツ帝国を成立させた", "オーストリア=ハンガリー帝国を建国した", "プロイセン王国を建国した"],
+            "explanation": "オットー・フォン・ビスマルク（1815-1898）は「鉄血宰相」として普墺戦争・普仏戦争を勝利に導き、1871年にドイツ帝国を成立させた。",
+            "category": "近代ヨーロッパ"
+        },
+        {
+            "question": "マリー・キュリーが科学史上行ったことは？",
+            "answer": "放射性元素ラジウムとポロニウムを発見した",
+            "choices": ["X線を発見した", "放射性元素ラジウムとポロニウムを発見した", "核分裂を発見した", "DNAの二重らせん構造を解明した"],
+            "explanation": "マリー・キュリー（1867-1934）は夫ピエールとともにラジウムとポロニウムを発見し、ノーベル賞を2度受賞した（物理学賞・化学賞）。",
+            "category": "科学史"
+        },
     ],
-    2: [  # 中級熟語
-        {"word": "burn the midnight oil", "meaning": "夜遅くまで働く・勉強する", "options": ["オイルを燃やす", "夜遅くまで働く・勉強する", "夜更かしをする", "ランプを使う"], "related": ["work late", "burn the candle at both ends", "pull an all-nighter"], "difficulty": 2},
-        {"word": "cut to the chase", "meaning": "本題に入る・要点を言う", "options": ["追いかけるのをやめる", "本題に入る・要点を言う", "急ぐ", "省略する"], "related": ["get to the point", "skip the preamble", "get down to brass tacks"], "difficulty": 2},
-        {"word": "the ball is in your court", "meaning": "次はあなたの番だ", "options": ["ボールがコートにある", "次はあなたの番だ", "プレーを続けろ", "決断しろ"], "related": ["your move", "up to you now", "the decision is yours"], "difficulty": 2},
-        {"word": "beat around the bush", "meaning": "遠回しに言う・核心を避ける", "options": ["茂みの周りを叩く", "遠回しに言う・核心を避ける", "探し回る", "回り道をする"], "related": ["hedge", "equivocate", "avoid the issue"], "difficulty": 2},
-        {"word": "bite off more than you can chew", "meaning": "手に余ることをする・分不相応な約束をする", "options": ["食べすぎる", "手に余ることをする・分不相応な約束をする", "大きな夢を持つ", "頑張りすぎる"], "related": ["overextend oneself", "take on too much", "overcommit"], "difficulty": 2},
-        {"word": "sit on the fence", "meaning": "日和見をする・態度を決めかねる", "options": ["フェンスに座る", "日和見をする・態度を決めかねる", "観察する", "安全でいる"], "related": ["be undecided", "hedge one's bets", "be on the fence"], "difficulty": 2},
-        {"word": "a blessing in disguise", "meaning": "不幸中の幸い", "options": ["偽りの恩恵", "不幸中の幸い", "隠れた祝福", "変装した幸運"], "related": ["silver lining", "turn out for the best", "hidden advantage"], "difficulty": 2},
-        {"word": "go the extra mile", "meaning": "一層の努力をする・奮闘する", "options": ["余計に歩く", "一層の努力をする・奮闘する", "遠くに行く", "時間をかける"], "related": ["go above and beyond", "put in extra effort", "exceed expectations"], "difficulty": 2},
-    ],
-    3: [  # 上級熟語
-        {"word": "bite the hand that feeds you", "meaning": "恩をあだで返す", "options": ["食べさせてくれる手を噛む", "恩をあだで返す", "不満を持つ", "支援を拒否する"], "related": ["betray a benefactor", "show ingratitude", "turn against one's patron"], "difficulty": 3},
-        {"word": "burn one's bridges", "meaning": "退路を断つ・関係を完全に壊す", "options": ["橋を燃やす", "退路を断つ・関係を完全に壊す", "過去を忘れる", "リスクを冒す"], "related": ["cut off all escape routes", "make a point of no return", "sever ties permanently"], "difficulty": 3},
-        {"word": "add fuel to the fire", "meaning": "火に油を注ぐ・悪化させる", "options": ["燃料を加える", "火に油を注ぐ・悪化させる", "問題を解決する", "状況を説明する"], "related": ["exacerbate", "make matters worse", "inflame the situation"], "difficulty": 3},
-        {"word": "let the cat out of the bag", "meaning": "うっかり秘密を漏らす", "options": ["猫を放す", "うっかり秘密を漏らす", "贈り物を開ける", "驚かせる"], "related": ["spill the beans", "reveal a secret", "disclose unintentionally"], "difficulty": 3},
-        {"word": "put the cart before the horse", "meaning": "本末転倒・順序を間違える", "options": ["馬車を引く", "本末転倒・順序を間違える", "準備する", "先を急ぐ"], "related": ["do things in wrong order", "prioritize incorrectly", "get ahead of oneself"], "difficulty": 3},
-        {"word": "throw caution to the wind", "meaning": "大胆に行動する・慎重さを捨てる", "options": ["警告を無視する", "大胆に行動する・慎重さを捨てる", "リスクを計算する", "注意を払う"], "related": ["be reckless", "throw caution to the winds", "act boldly without regard"], "difficulty": 3},
-    ],
-    4: [  # 難関大学レベル熟語
-        {"word": "gild the lily", "meaning": "完全なものをさらに良くしようとして台なしにする・蛇足を加える", "options": ["百合に金メッキをする", "完全なものをさらに良くしようとして台なしにする・蛇足を加える", "美化する", "過剰に飾る"], "related": ["overdo it", "add unnecessary embellishment", "carry coals to Newcastle"], "difficulty": 4},
-        {"word": "between the devil and the deep blue sea", "meaning": "進退両難・板挟みの状態", "options": ["悪魔と深い海の間", "進退両難・板挟みの状態", "困難な状況", "選択肢がない"], "related": ["between a rock and a hard place", "in a dilemma", "Scylla and Charybdis"], "difficulty": 4},
-        {"word": "rob Peter to pay Paul", "meaning": "一方の借金を払うために他方から借りる・やりくりする", "options": ["ピーターからポールに払う", "一方の借金を払うために他方から借りる・やりくりする", "お金を盗む", "借金を返す"], "difficulty": 4, "related": ["borrow from one to pay another", "shuffle funds", "make ends meet poorly"]},
-        {"word": "the proof of the pudding is in the eating", "meaning": "物事は実際にやってみなければわからない", "options": ["プディングを食べる", "物事は実際にやってみなければわからない", "料理は食べてみてわかる", "実践が大事"], "related": ["actions speak louder than words", "judge by results", "put to the test"], "difficulty": 4},
-        {"word": "sow the wind and reap the whirlwind", "meaning": "因果応報・悪事は身に返る", "options": ["風を蒔く", "因果応報・悪事は身に返る", "風を起こす", "嵐を招く"], "related": ["reap what you sow", "karma", "consequences of one's actions"], "difficulty": 4},
-        {"word": "hoist with one's own petard", "meaning": "自縄自縛・自分の策略に自分がはまる", "options": ["自分の爆弾で爆破される", "自縄自縛・自分の策略に自分がはまる", "失敗する", "危険を冒す"], "related": ["backfire", "be caught in one's own trap", "own goal"], "difficulty": 4},
-    ]
 }
