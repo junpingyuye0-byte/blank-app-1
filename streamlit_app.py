@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-化学クイズゲーム（コイン・アイテム対応版）
+化学クイズゲーム（Streamlit版）
 --------------------------------------------
+実行方法:
+    pip install streamlit
+    streamlit run chemistry_game_streamlit.py
+
 ・4段階の難易度モード（初級／中級／上級／超級）
 ・各モードたくさんの問題（合計110問）
 ・連続正解するほど背景がだんだん明るくなる
@@ -10,12 +14,10 @@
     - スキップ：この問題を飛ばす
     - シールド：1回だけ不正解を無効にして連続正解を守る
 ・コインとアイテムはファイルに保存され、次回起動時も引き継がれる
-・使用ライブラリは Python標準の tkinter / random / json / os のみ
-  （AI・ネット通信は一切なし）
+・使用ライブラリは streamlit / random / json / os のみ（AI・外部通信なし）
 """
 
-import tkinter as tk
-from tkinter import font as tkfont
+import streamlit as st
 import random
 import json
 import os
@@ -167,6 +169,9 @@ ITEMS = {
 SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chemistry_save.json")
 
 
+# =========================================================
+# セーブデータ読み書き
+# =========================================================
 def load_save():
     default = {"coins": 0, "inventory": {"hint": 0, "skip": 0, "shield": 0}}
     if os.path.exists(SAVE_PATH):
@@ -182,14 +187,20 @@ def load_save():
     return default
 
 
-def write_save(coins, inventory):
+def write_save():
     try:
         with open(SAVE_PATH, "w", encoding="utf-8") as f:
-            json.dump({"coins": coins, "inventory": inventory}, f, ensure_ascii=False)
+            json.dump(
+                {"coins": st.session_state.coins, "inventory": st.session_state.inventory},
+                f, ensure_ascii=False
+            )
     except Exception:
         pass
 
 
+# =========================================================
+# 色計算
+# =========================================================
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip("#")
     return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
@@ -216,376 +227,318 @@ def coins_for_streak(streak):
     return base + bonus
 
 
-class ChemistryGame(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("化学クイズゲーム")
-        self.geometry("720x580")
-        self.resizable(False, False)
+def apply_background(color):
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-color: {color};
+            transition: background-color 0.4s ease;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        self.title_font = tkfont.Font(size=22, weight="bold")
-        self.normal_font = tkfont.Font(size=14)
-        self.button_font = tkfont.Font(size=13)
-        self.small_font = tkfont.Font(size=11)
-        self.coin_font = tkfont.Font(size=12, weight="bold")
 
-        save = load_save()
-        self.coins = save["coins"]
-        self.inventory = save["inventory"]
+# =========================================================
+# セッション状態の初期化
+# =========================================================
+def init_state():
+    if "initialized" in st.session_state:
+        return
+    save = load_save()
+    st.session_state.coins = save["coins"]
+    st.session_state.inventory = save["inventory"]
 
-        self.level = None
-        self.base_color = "#ffffff"
-        self.questions = []
-        self.q_index = 0
-        self.score = 0
-        self.streak = 0
-        self.coins_earned_session = 0
+    st.session_state.screen = "start"     # start / shop / quiz / result
+    st.session_state.level = None
+    st.session_state.base_color = "#ffffff"
+    st.session_state.questions = []
+    st.session_state.q_index = 0
+    st.session_state.score = 0
+    st.session_state.streak = 0
+    st.session_state.coins_earned_session = 0
 
-        self.hint_used_this_q = False
-        self.shield_active = False
+    st.session_state.shield_active = False
+    st.session_state.hint_used_this_q = False
+    st.session_state.disabled_choices = []
+    st.session_state.current_choices = []
+    st.session_state.current_answer = None
+    st.session_state.answered = False
+    st.session_state.feedback_text = ""
+    st.session_state.feedback_color = "black"
+    st.session_state.prepared_q_index = -1
 
-        self.container = tk.Frame(self)
-        self.container.pack(fill="both", expand=True)
+    st.session_state.initialized = True
 
-        self.show_start_screen()
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-    def on_close(self):
-        write_save(self.coins, self.inventory)
-        self.destroy()
+def prepare_question():
+    """現在の q_index の問題の選択肢をシャッフルして保持する"""
+    if st.session_state.prepared_q_index == st.session_state.q_index:
+        return
+    if st.session_state.q_index >= len(st.session_state.questions):
+        return
+    _, choices, answer = st.session_state.questions[st.session_state.q_index]
+    shuffled = choices[:]
+    random.shuffle(shuffled)
+    st.session_state.current_choices = shuffled
+    st.session_state.current_answer = answer
+    st.session_state.disabled_choices = []
+    st.session_state.hint_used_this_q = False
+    st.session_state.answered = False
+    st.session_state.feedback_text = ""
+    st.session_state.prepared_q_index = st.session_state.q_index
 
-    # -----------------------------------------------------
-    # 画面：スタート（レベル選択）
-    # -----------------------------------------------------
-    def clear_container(self):
-        for widget in self.container.winfo_children():
-            widget.destroy()
 
-    def show_start_screen(self):
-        write_save(self.coins, self.inventory)
-        self.configure(bg="#ffffff")
-        self.container.configure(bg="#ffffff")
-        self.clear_container()
+def start_level(level_num):
+    name, questions, color = LEVELS[level_num]
+    st.session_state.level = level_num
+    st.session_state.base_color = color
+    qs = questions[:]
+    random.shuffle(qs)
+    st.session_state.questions = qs
+    st.session_state.q_index = 0
+    st.session_state.score = 0
+    st.session_state.streak = 0
+    st.session_state.coins_earned_session = 0
+    st.session_state.shield_active = False
+    st.session_state.prepared_q_index = -1
+    st.session_state.screen = "quiz"
 
-        tk.Label(
-            self.container, text="化学クイズゲーム",
-            font=self.title_font, bg="#ffffff"
-        ).pack(pady=(30, 5))
 
-        tk.Label(
-            self.container,
-            text=f"所持コイン：{self.coins} 枚",
-            font=self.coin_font, fg="#b8860b", bg="#ffffff"
-        ).pack(pady=(0, 10))
+def go_to_next_question():
+    st.session_state.q_index += 1
+    if st.session_state.q_index >= len(st.session_state.questions):
+        st.session_state.screen = "result"
 
-        tk.Label(
-            self.container,
-            text="モードを選んでください\n連続正解すると背景が明るくなり、コインもたまります！",
-            font=self.normal_font, bg="#ffffff", justify="center"
-        ).pack(pady=(0, 20))
 
-        for level_num, (name, questions, color) in LEVELS.items():
-            btn = tk.Button(
-                self.container,
-                text=f"{level_num}. {name}　（全{len(questions)}問）",
-                font=self.button_font,
-                width=32, height=2,
-                bg=color,
-                activebackground=color,
-                command=lambda n=level_num: self.start_level(n)
+def check_answer(chosen):
+    answer = st.session_state.current_answer
+    if chosen == answer:
+        st.session_state.score += 1
+        st.session_state.streak += 1
+        earned = coins_for_streak(st.session_state.streak)
+        st.session_state.coins += earned
+        st.session_state.coins_earned_session += earned
+        st.session_state.feedback_text = f"○ 正解！　+{earned} コイン"
+        st.session_state.feedback_color = "#0a8a2f"
+    else:
+        if st.session_state.shield_active:
+            st.session_state.shield_active = False
+            st.session_state.feedback_text = (
+                f"× 不正解…でもシールド発動！連続正解記録は守られた（正解：{answer}）"
             )
-            btn.pack(pady=5)
-
-        tk.Button(
-            self.container, text="🛒 ショップ",
-            font=self.button_font, width=32, height=2,
-            bg="#f0e0ff", activebackground="#f0e0ff",
-            command=self.show_shop_screen
-        ).pack(pady=(15, 5))
-
-    # -----------------------------------------------------
-    # 画面：ショップ
-    # -----------------------------------------------------
-    def show_shop_screen(self):
-        self.configure(bg="#ffffff")
-        self.container.configure(bg="#ffffff")
-        self.clear_container()
-
-        tk.Label(
-            self.container, text="ショップ",
-            font=self.title_font, bg="#ffffff"
-        ).pack(pady=(20, 5))
-
-        tk.Label(
-            self.container, text=f"所持コイン：{self.coins} 枚",
-            font=self.coin_font, fg="#b8860b", bg="#ffffff"
-        ).pack(pady=(0, 20))
-
-        for item_id, info in ITEMS.items():
-            frame = tk.Frame(self.container, bg="#f5f5f5", bd=1, relief="solid")
-            frame.pack(pady=6, padx=30, fill="x")
-
-            text = (
-                f"{info['name']}　（{info['cost']}コイン）\n"
-                f"{info['desc']}\n"
-                f"所持数：{self.inventory.get(item_id, 0)} 個"
-            )
-            tk.Label(
-                frame, text=text, font=self.small_font, bg="#f5f5f5",
-                justify="left", anchor="w"
-            ).pack(side="left", padx=10, pady=8, fill="x", expand=True)
-
-            buy_btn = tk.Button(
-                frame, text="購入する", font=self.button_font,
-                command=lambda i=item_id: self.buy_item(i)
-            )
-            buy_btn.pack(side="right", padx=10)
-            if self.coins < info["cost"]:
-                buy_btn.config(state="disabled")
-
-        tk.Button(
-            self.container, text="戻る", font=self.button_font,
-            width=20, height=2,
-            command=self.show_start_screen
-        ).pack(pady=20)
-
-    def buy_item(self, item_id):
-        cost = ITEMS[item_id]["cost"]
-        if self.coins >= cost:
-            self.coins -= cost
-            self.inventory[item_id] = self.inventory.get(item_id, 0) + 1
-            write_save(self.coins, self.inventory)
-        self.show_shop_screen()
-
-    # -----------------------------------------------------
-    # ゲーム開始
-    # -----------------------------------------------------
-    def start_level(self, level_num):
-        self.level = level_num
-        name, questions, color = LEVELS[level_num]
-        self.base_color = color
-        self.questions = questions[:]
-        random.shuffle(self.questions)
-
-        self.q_index = 0
-        self.score = 0
-        self.streak = 0
-        self.coins_earned_session = 0
-        self.shield_active = False
-
-        self.update_background()
-        self.show_question_screen()
-
-    def update_background(self):
-        color = brighten_color(self.base_color, self.streak)
-        self.configure(bg=color)
-        self.container.configure(bg=color)
-
-    # -----------------------------------------------------
-    # 画面：問題
-    # -----------------------------------------------------
-    def show_question_screen(self):
-        self.clear_container()
-        self.hint_used_this_q = False
-
-        if self.q_index >= len(self.questions):
-            self.show_result_screen()
-            return
-
-        question, choices, answer = self.questions[self.q_index]
-        bg = self.container["bg"]
-
-        name, _, _ = LEVELS[self.level]
-        header = tk.Label(
-            self.container,
-            text=f"【{name}】 第{self.q_index + 1}問 / 全{len(self.questions)}問"
-                 f"　　得点: {self.score}　　連続正解: {self.streak}"
-                 f"　　コイン: {self.coins}",
-            font=self.small_font, bg=bg
-        )
-        header.pack(pady=(15, 10))
-
-        q_label = tk.Label(
-            self.container, text=question, font=self.normal_font,
-            bg=bg, wraplength=620, justify="center"
-        )
-        q_label.pack(pady=(5, 20))
-
-        self.shuffled_choices = choices[:]
-        random.shuffle(self.shuffled_choices)
-        self.current_answer = answer
-
-        self.feedback_label = tk.Label(
-            self.container, text="", font=self.normal_font, bg=bg
-        )
-        self.feedback_label.pack(pady=(0, 8))
-
-        btn_frame = tk.Frame(self.container, bg=bg)
-        btn_frame.pack()
-
-        self.choice_buttons = {}
-        for choice in self.shuffled_choices:
-            btn = tk.Button(
-                btn_frame, text=choice, font=self.button_font,
-                width=25, height=2,
-                command=lambda c=choice, a=answer: self.check_answer(c, a)
-            )
-            btn.pack(pady=4)
-            self.choice_buttons[choice] = btn
-
-        # ----- アイテム使用エリア -----
-        item_frame = tk.Frame(self.container, bg=bg)
-        item_frame.pack(pady=(15, 0))
-
-        tk.Label(item_frame, text="アイテム：", font=self.small_font, bg=bg).pack(side="left")
-
-        self.hint_btn = tk.Button(
-            item_frame, text=f"ヒント({self.inventory.get('hint', 0)})",
-            font=self.small_font, command=self.use_hint
-        )
-        self.hint_btn.pack(side="left", padx=4)
-        if self.inventory.get("hint", 0) <= 0:
-            self.hint_btn.config(state="disabled")
-
-        self.skip_btn = tk.Button(
-            item_frame, text=f"スキップ({self.inventory.get('skip', 0)})",
-            font=self.small_font, command=self.use_skip
-        )
-        self.skip_btn.pack(side="left", padx=4)
-        if self.inventory.get("skip", 0) <= 0:
-            self.skip_btn.config(state="disabled")
-
-        shield_label = "使用中" if self.shield_active else f"シールド({self.inventory.get('shield', 0)})"
-        self.shield_btn = tk.Button(
-            item_frame, text=shield_label,
-            font=self.small_font, command=self.use_shield
-        )
-        self.shield_btn.pack(side="left", padx=4)
-        if self.shield_active or self.inventory.get("shield", 0) <= 0:
-            self.shield_btn.config(state="disabled")
-
-    # -----------------------------------------------------
-    # アイテム効果
-    # -----------------------------------------------------
-    def use_hint(self):
-        if self.hint_used_this_q or self.inventory.get("hint", 0) <= 0:
-            return
-        wrong_choices = [c for c in self.shuffled_choices if c != self.current_answer]
-        random.shuffle(wrong_choices)
-        to_disable = wrong_choices[:2]
-        for c in to_disable:
-            self.choice_buttons[c].config(state="disabled", bg="#dddddd")
-
-        self.inventory["hint"] -= 1
-        self.hint_used_this_q = True
-        write_save(self.coins, self.inventory)
-        self.hint_btn.config(text=f"ヒント({self.inventory['hint']})", state="disabled")
-
-    def use_skip(self):
-        if self.inventory.get("skip", 0) <= 0:
-            return
-        self.inventory["skip"] -= 1
-        write_save(self.coins, self.inventory)
-        for btn in self.choice_buttons.values():
-            btn.config(state="disabled")
-        self.feedback_label.config(text="この問題はスキップしました", fg="#555555")
-        self.after(500, self.next_question)
-
-    def use_shield(self):
-        if self.shield_active or self.inventory.get("shield", 0) <= 0:
-            return
-        self.inventory["shield"] -= 1
-        self.shield_active = True
-        write_save(self.coins, self.inventory)
-        self.shield_btn.config(text="使用中", state="disabled")
-
-    # -----------------------------------------------------
-    # 解答チェック
-    # -----------------------------------------------------
-    def check_answer(self, chosen, answer):
-        for btn in self.choice_buttons.values():
-            btn.config(state="disabled")
-
-        if chosen == answer:
-            self.score += 1
-            self.streak += 1
-            earned = coins_for_streak(self.streak)
-            self.coins += earned
-            self.coins_earned_session += earned
-            write_save(self.coins, self.inventory)
-            self.feedback_label.config(
-                text=f"○ 正解！　+{earned} コイン", fg="#0a8a2f"
-            )
+            st.session_state.feedback_color = "#8a5a0a"
         else:
-            if self.shield_active:
-                self.shield_active = False
-                self.feedback_label.config(
-                    text=f"× 不正解…でもシールド発動！連続正解記録は守られた（正解：{answer}）",
-                    fg="#8a5a0a"
-                )
-                # streak は維持（リセットしない）
-            else:
-                self.streak = 0
-                self.feedback_label.config(
-                    text=f"× 不正解…　正解は「{answer}」", fg="#c0392b"
-                )
+            st.session_state.streak = 0
+            st.session_state.feedback_text = f"× 不正解…　正解は「{answer}」"
+            st.session_state.feedback_color = "#c0392b"
 
-        self.update_background()
-        self.feedback_label.configure(bg=self.container["bg"])
+    st.session_state.answered = True
+    write_save()
 
-        self.after(1000, self.next_question)
 
-    def next_question(self):
-        self.q_index += 1
-        self.show_question_screen()
+def use_hint():
+    if st.session_state.hint_used_this_q or st.session_state.inventory.get("hint", 0) <= 0:
+        return
+    wrong = [c for c in st.session_state.current_choices if c != st.session_state.current_answer]
+    random.shuffle(wrong)
+    st.session_state.disabled_choices = wrong[:2]
+    st.session_state.inventory["hint"] -= 1
+    st.session_state.hint_used_this_q = True
+    write_save()
 
-    # -----------------------------------------------------
-    # 画面：結果
-    # -----------------------------------------------------
-    def show_result_screen(self):
-        write_save(self.coins, self.inventory)
-        self.clear_container()
-        bg = self.container["bg"]
-        name, _, _ = LEVELS[self.level]
 
-        tk.Label(
-            self.container, text="結果発表",
-            font=self.title_font, bg=bg
-        ).pack(pady=(40, 15))
+def use_skip():
+    if st.session_state.inventory.get("skip", 0) <= 0 or st.session_state.answered:
+        return
+    st.session_state.inventory["skip"] -= 1
+    write_save()
+    go_to_next_question()
 
-        total = len(self.questions)
-        rate = 0 if total == 0 else round(self.score / total * 100)
 
-        tk.Label(
-            self.container,
-            text=(
-                f"モード：{name}\n"
-                f"得点：{self.score} / {total}　（正答率 {rate}%）\n"
-                f"獲得コイン：{self.coins_earned_session} 枚\n"
-                f"現在の所持コイン：{self.coins} 枚"
-            ),
-            font=self.normal_font, bg=bg, justify="center"
-        ).pack(pady=(0, 30))
+def use_shield():
+    if st.session_state.shield_active or st.session_state.inventory.get("shield", 0) <= 0:
+        return
+    st.session_state.inventory["shield"] -= 1
+    st.session_state.shield_active = True
+    write_save()
 
-        tk.Button(
-            self.container, text="もう一度このモードで挑戦",
-            font=self.button_font, width=28, height=2,
-            command=lambda: self.start_level(self.level)
-        ).pack(pady=6)
 
-        tk.Button(
-            self.container, text="🛒 ショップへ",
-            font=self.button_font, width=28, height=2,
-            command=self.show_shop_screen
-        ).pack(pady=6)
+def buy_item(item_id):
+    cost = ITEMS[item_id]["cost"]
+    if st.session_state.coins >= cost:
+        st.session_state.coins -= cost
+        st.session_state.inventory[item_id] = st.session_state.inventory.get(item_id, 0) + 1
+        write_save()
 
-        tk.Button(
-            self.container, text="モード選択に戻る",
-            font=self.button_font, width=28, height=2,
-            command=self.show_start_screen
-        ).pack(pady=6)
+
+# =========================================================
+# 画面：スタート
+# =========================================================
+def render_start_screen():
+    apply_background("#ffffff")
+    st.title("🧪 化学クイズゲーム")
+    st.markdown(f"### 所持コイン：🪙 {st.session_state.coins} 枚")
+    st.write("モードを選んでください。連続正解すると背景が明るくなり、コインもたまります！")
+
+    for level_num, (name, questions, color) in LEVELS.items():
+        if st.button(f"{level_num}. {name}　（全{len(questions)}問）", key=f"level_{level_num}", use_container_width=True):
+            start_level(level_num)
+            st.rerun()
+
+    st.write("")
+    if st.button("🛒 ショップへ", use_container_width=True):
+        st.session_state.screen = "shop"
+        st.rerun()
+
+
+# =========================================================
+# 画面：ショップ
+# =========================================================
+def render_shop_screen():
+    apply_background("#ffffff")
+    st.title("🛒 ショップ")
+    st.markdown(f"### 所持コイン：🪙 {st.session_state.coins} 枚")
+
+    for item_id, info in ITEMS.items():
+        with st.container(border=True):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**{info['name']}**　（{info['cost']}コイン）")
+                st.caption(info["desc"])
+                st.write(f"所持数：{st.session_state.inventory.get(item_id, 0)} 個")
+            with col2:
+                disabled = st.session_state.coins < info["cost"]
+                if st.button("購入する", key=f"buy_{item_id}", disabled=disabled, use_container_width=True):
+                    buy_item(item_id)
+                    st.rerun()
+
+    st.write("")
+    if st.button("← 戻る", use_container_width=True):
+        st.session_state.screen = "start"
+        st.rerun()
+
+
+# =========================================================
+# 画面：クイズ
+# =========================================================
+def render_quiz_screen():
+    prepare_question()
+
+    if st.session_state.q_index >= len(st.session_state.questions):
+        st.session_state.screen = "result"
+        st.rerun()
+        return
+
+    color = brighten_color(st.session_state.base_color, st.session_state.streak)
+    apply_background(color)
+
+    name, _, _ = LEVELS[st.session_state.level]
+    total = len(st.session_state.questions)
+
+    st.markdown(
+        f"**【{name}】** 第{st.session_state.q_index + 1}問 / 全{total}問　　"
+        f"得点: {st.session_state.score}　　連続正解: {st.session_state.streak}　　"
+        f"🪙 コイン: {st.session_state.coins}"
+    )
+    st.progress((st.session_state.q_index) / total)
+
+    question, _, _ = st.session_state.questions[st.session_state.q_index]
+    st.markdown(f"## {question}")
+
+    if st.session_state.feedback_text:
+        st.markdown(
+            f"<p style='color:{st.session_state.feedback_color}; font-size:18px; font-weight:bold;'>"
+            f"{st.session_state.feedback_text}</p>",
+            unsafe_allow_html=True,
+        )
+
+    # ----- 選択肢ボタン -----
+    for choice in st.session_state.current_choices:
+        is_disabled = st.session_state.answered or choice in st.session_state.disabled_choices
+        if st.button(choice, key=f"choice_{st.session_state.q_index}_{choice}",
+                     disabled=is_disabled, use_container_width=True):
+            check_answer(choice)
+            st.rerun()
+
+    # ----- 次へボタン（解答後のみ表示） -----
+    if st.session_state.answered:
+        if st.button("次の問題へ ▶", use_container_width=True, type="primary"):
+            go_to_next_question()
+            st.rerun()
+
+    st.write("---")
+    st.caption("アイテムを使う")
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        hint_count = st.session_state.inventory.get("hint", 0)
+        if st.button(f"💡 ヒント（{hint_count}）", disabled=(hint_count <= 0 or st.session_state.hint_used_this_q or st.session_state.answered), use_container_width=True):
+            use_hint()
+            st.rerun()
+
+    with c2:
+        skip_count = st.session_state.inventory.get("skip", 0)
+        if st.button(f"⏭ スキップ（{skip_count}）", disabled=(skip_count <= 0 or st.session_state.answered), use_container_width=True):
+            use_skip()
+            st.rerun()
+
+    with c3:
+        shield_count = st.session_state.inventory.get("shield", 0)
+        shield_label = "🛡 使用中" if st.session_state.shield_active else f"🛡 シールド（{shield_count}）"
+        if st.button(shield_label, disabled=(st.session_state.shield_active or shield_count <= 0), use_container_width=True):
+            use_shield()
+            st.rerun()
+
+
+# =========================================================
+# 画面：結果
+# =========================================================
+def render_result_screen():
+    apply_background(st.session_state.base_color)
+    name, _, _ = LEVELS[st.session_state.level]
+    total = len(st.session_state.questions)
+    rate = 0 if total == 0 else round(st.session_state.score / total * 100)
+
+    st.title("🎉 結果発表")
+    st.markdown(f"### モード：{name}")
+    st.markdown(f"### 得点：{st.session_state.score} / {total}　（正答率 {rate}%）")
+    st.markdown(f"### 獲得コイン：🪙 {st.session_state.coins_earned_session} 枚")
+    st.markdown(f"### 現在の所持コイン：🪙 {st.session_state.coins} 枚")
+
+    write_save()
+
+    st.write("")
+    if st.button("🔁 もう一度このモードで挑戦", use_container_width=True):
+        start_level(st.session_state.level)
+        st.rerun()
+    if st.button("🛒 ショップへ", use_container_width=True):
+        st.session_state.screen = "shop"
+        st.rerun()
+    if st.button("🏠 モード選択に戻る", use_container_width=True):
+        st.session_state.screen = "start"
+        st.rerun()
+
+
+# =========================================================
+# メイン
+# =========================================================
+def main():
+    st.set_page_config(page_title="化学クイズゲーム", page_icon="🧪", layout="centered")
+    init_state()
+
+    screen = st.session_state.screen
+    if screen == "start":
+        render_start_screen()
+    elif screen == "shop":
+        render_shop_screen()
+    elif screen == "quiz":
+        render_quiz_screen()
+    elif screen == "result":
+        render_result_screen()
 
 
 if __name__ == "__main__":
-    app = ChemistryGame()
-    app.mainloop()
+    main()
