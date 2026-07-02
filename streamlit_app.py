@@ -1,556 +1,322 @@
-import streamlit as st
+# -*- coding: utf-8 -*-
+"""
+化学クイズゲーム
+----------------
+・4段階の難易度モード（初級／中級／上級／超級）
+・各モード多数の問題（合計60問以上）
+・連続正解するほど背景がだんだん明るくなる
+・使用ライブラリは Python標準の tkinter と random のみ（AI・通信なし）
+"""
+
+import tkinter as tk
+from tkinter import font as tkfont
 import random
-import time
-from questions import QUESTIONS_BY_LEVEL, LEVEL_INFO
 
-# ─── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="⚗️ ChemLab Blast",
-    page_icon="⚗️",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+# =========================================================
+# 問題データ（4段階）
+# =========================================================
 
-# ─── CSS ───────────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap');
+LEVEL1_QUESTIONS = [
+    ("水素の元素記号は？", ["H", "He", "Hg", "N"], "H"),
+    ("酸素の元素記号は？", ["O", "Os", "Ox", "On"], "O"),
+    ("水の化学式は？", ["H2O", "CO2", "NaCl", "O2"], "H2O"),
+    ("二酸化炭素の化学式は？", ["CO2", "CO", "O2", "H2O"], "CO2"),
+    ("食塩（塩化ナトリウム）の化学式は？", ["NaCl", "NaOH", "KCl", "CaCl2"], "NaCl"),
+    ("ヘリウムの元素記号は？", ["He", "H", "Ne", "Li"], "He"),
+    ("炭素の元素記号は？", ["C", "Ca", "Cl", "Co"], "C"),
+    ("窒素の元素記号は？", ["N", "Na", "Ne", "Ni"], "N"),
+    ("ナトリウムの元素記号は？", ["Na", "N", "Ni", "Ne"], "Na"),
+    ("鉄の元素記号は？", ["Fe", "F", "Ir", "Fr"], "Fe"),
+    ("金の元素記号は？", ["Au", "Ag", "Al", "Ar"], "Au"),
+    ("銀の元素記号は？", ["Ag", "Au", "Al", "As"], "Ag"),
+    ("銅の元素記号は？", ["Cu", "Co", "Ca", "Cr"], "Cu"),
+    ("カルシウムの元素記号は？", ["Ca", "Cu", "Cl", "C"], "Ca"),
+    ("塩素の元素記号は？", ["Cl", "C", "Ca", "Co"], "Cl"),
+    ("アルミニウムの元素記号は？", ["Al", "Ar", "Au", "As"], "Al"),
+    ("硫黄の元素記号は？", ["S", "Si", "Sn", "Sr"], "S"),
+    ("カリウムの元素記号は？", ["K", "Ca", "Kr", "Co"], "K"),
+    ("亜鉛の元素記号は？", ["Zn", "Ni", "Sn", "Pb"], "Zn"),
+    ("物質を構成する最小単位を何という？", ["原子", "分子", "細胞", "元素記号"], "原子"),
+]
 
-/* ── base ── */
-html, body, [data-testid="stAppViewContainer"] {
-    background: #0D1B2A !important;
-    color: #E8F4FD;
-    font-family: 'Exo 2', sans-serif;
-}
-[data-testid="stHeader"] { background: transparent !important; }
-[data-testid="stSidebar"] { background: #0a1520 !important; }
-.block-container { padding-top: 1rem !important; max-width: 760px; }
+LEVEL2_QUESTIONS = [
+    ("メタンの化学式は？", ["CH4", "C2H6", "CO2", "NH3"], "CH4"),
+    ("アンモニアの化学式は？", ["NH3", "NO2", "N2O", "HN3"], "NH3"),
+    ("硫酸の化学式は？", ["H2SO4", "HCl", "HNO3", "H2SO3"], "H2SO4"),
+    ("塩酸の主成分は？", ["HCl", "H2SO4", "NaOH", "HNO3"], "HCl"),
+    ("水酸化ナトリウムの化学式は？", ["NaOH", "NaCl", "Na2O", "NaHCO3"], "NaOH"),
+    ("酸とアルカリが反応することを何という？", ["中和", "酸化", "還元", "電離"], "中和"),
+    ("ものが燃える（完全燃焼）と主に発生する気体は？", ["二酸化炭素", "酸素", "水素", "窒素"], "二酸化炭素"),
+    ("pHが7のとき溶液は？", ["中性", "酸性", "アルカリ性", "不明"], "中性"),
+    ("pHが7より小さいと溶液は？", ["酸性", "アルカリ性", "中性", "中和"], "酸性"),
+    ("pHが7より大きいと溶液は？", ["アルカリ性", "酸性", "中性", "中和"], "アルカリ性"),
+    ("原子核を構成する粒子は陽子と何？", ["中性子", "電子", "イオン", "分子"], "中性子"),
+    ("電子が持つ電荷は？", ["負（マイナス）", "正（プラス）", "電荷なし", "不定"], "負（マイナス）"),
+    ("陽子が持つ電荷は？", ["正（プラス）", "負（マイナス）", "電荷なし", "不定"], "正（プラス）"),
+    ("原子番号は何の数を表す？", ["陽子の数", "中性子の数", "電子殻の数", "分子の数"], "陽子の数"),
+    ("陽子の数が同じで中性子の数が異なる原子どうしを何という？", ["同位体", "同素体", "異性体", "同族体"], "同位体"),
+    ("炭素の同素体でないものは？", ["食塩", "ダイヤモンド", "黒鉛", "フラーレン"], "食塩"),
+    ("金属が電子を放出してできるイオンを何という？", ["陽イオン", "陰イオン", "中性子", "分子イオン"], "陽イオン"),
+    ("塩素原子が電子を受け取ってできるイオンを何という？", ["陰イオン", "陽イオン", "中性子", "同位体"], "陰イオン"),
+    ("水溶液に電流が流れる物質を何という？", ["電解質", "非電解質", "触媒", "同位体"], "電解質"),
+    ("砂糖水のように電流が流れない物質を何という？", ["非電解質", "電解質", "酸", "塩基"], "非電解質"),
+]
 
-/* ── title ── */
-.game-title {
-    font-family: 'Orbitron', monospace;
-    font-size: 2.6rem;
-    font-weight: 900;
-    background: linear-gradient(135deg, #00F5D4 0%, #7B2D8B 60%, #FF6B35 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
-    margin-bottom: 0;
-    letter-spacing: 0.04em;
-    text-shadow: none;
-}
-.game-sub {
-    text-align: center;
-    color: #6CBFD4;
-    font-size: 0.85rem;
-    letter-spacing: 0.2em;
-    margin-top: 0;
-    margin-bottom: 1.6rem;
-    text-transform: uppercase;
-}
+LEVEL3_QUESTIONS = [
+    ("水の生成反応式は？ 2H2 + O2 →", ["2H2O", "H2O2", "2H2O2", "HO2"], "2H2O"),
+    ("物質量（molの単位）が表すものは？", ["粒子の数の集まり", "重さ", "体積", "温度"], "粒子の数の集まり"),
+    ("1molに含まれる粒子の数（アボガドロ数）は約？", ["6.02×10の23乗", "3.14×10の8乗", "9.8×10の10乗", "1.0×10の6乗"], "6.02×10の23乗"),
+    ("酸素と結びつく化学変化を何という？", ["酸化", "還元", "中和", "電離"], "酸化"),
+    ("酸化物から酸素を奪う化学変化を何という？", ["還元", "酸化", "中和", "電離"], "還元"),
+    ("塩化ナトリウムの結晶を作る結合は？", ["イオン結合", "共有結合", "金属結合", "水素結合"], "イオン結合"),
+    ("水分子（H2O）を作る結合は？", ["共有結合", "イオン結合", "金属結合", "配位結合のみ"], "共有結合"),
+    ("周期表で縦の列（同じ族）の元素は性質が？", ["似ている", "全く異なる", "関係ない", "反応しない"], "似ている"),
+    ("ヘリウムやネオンなど反応しにくい気体を何という？", ["貴ガス（希ガス）", "ハロゲン", "アルカリ金属", "遷移金属"], "貴ガス（希ガス）"),
+    ("化学反応の速さを変えるが自身は変化しない物質は？", ["触媒", "溶媒", "溶質", "指示薬"], "触媒"),
+    ("塩酸と水酸化ナトリウム水溶液を混ぜると生じる塩は？", ["塩化ナトリウム", "硫酸ナトリウム", "炭酸ナトリウム", "硝酸ナトリウム"], "塩化ナトリウム"),
+    ("酸化銀を加熱すると発生する気体は？", ["酸素", "水素", "二酸化炭素", "窒素"], "酸素"),
+    ("塩酸に亜鉛を入れると発生する気体は？", ["水素", "酸素", "二酸化炭素", "塩素"], "水素"),
+    ("炭酸水素ナトリウムを加熱すると発生する気体は？", ["二酸化炭素", "酸素", "水素", "アンモニア"], "二酸化炭素"),
+    ("BTB溶液が酸性で示す色は？", ["黄色", "青色", "緑色", "赤色"], "黄色"),
+]
 
-/* ── level cards ── */
-.level-grid { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; margin-bottom: 1.5rem; }
-.level-card {
-    border: 1.5px solid;
-    border-radius: 12px;
-    padding: 1rem 1.2rem;
-    width: 155px;
-    cursor: pointer;
-    text-align: center;
-    transition: transform 0.15s, box-shadow 0.15s;
-}
-.level-card:hover { transform: translateY(-3px); }
+LEVEL4_QUESTIONS = [
+    ("NaOH + HCl → NaCl + ？", ["H2O", "H2", "O2", "Cl2"], "H2O"),
+    ("水（H2O）のモル質量は約18g/molである。0.5molの水の質量は？", ["9g", "18g", "36g", "4.5g"], "9g"),
+    ("炭酸カルシウムの化学式は？", ["CaCO3", "CaO", "Ca(OH)2", "CaCl2"], "CaCO3"),
+    ("硝酸の化学式は？", ["HNO3", "H2SO4", "HCl", "H2CO3"], "HNO3"),
+    ("水を電気分解すると陰極（マイナス極）に発生する気体は？", ["水素", "酸素", "窒素", "二酸化炭素"], "水素"),
+    ("pH2の溶液はpH5の溶液に比べて水素イオン濃度が？", ["1000倍高い", "1000倍低い", "3倍高い", "同じ"], "1000倍高い"),
+    ("気体の状態方程式 PV=？ の右辺は？", ["nRT", "mgh", "F/A", "ρV"], "nRT"),
+    ("標準状態（0℃・1気圧）で気体1molが占める体積は？", ["22.4L", "1L", "100L", "18mL"], "22.4L"),
+    ("1Lの水にNaClを1mol溶かした水溶液のモル濃度は？", ["1mol/L", "0.5mol/L", "2mol/L", "10mol/L"], "1mol/L"),
+    ("単体（例：O2やFeなど）を構成する原子の酸化数は？", ["0", "+1", "-1", "+2"], "0"),
+    ("メタン(CH4)が完全燃焼すると生成する物質は？", ["CO2とH2O", "COとH2", "CとH2O", "CO2とH2"], "CO2とH2O"),
+    ("エタノールの化学式は？", ["C2H5OH", "CH3OH", "C2H4", "C2H6"], "C2H5OH"),
+    ("酢酸の化学式は？", ["CH3COOH", "HCOOH", "C2H5OH", "CH3OH"], "CH3COOH"),
+    ("ダニエル電池で使われる2種類の金属は？", ["亜鉛と銅", "鉄と銅", "亜鉛と鉛", "銀と銅"], "亜鉛と銅"),
+    ("イオン化傾向が最も大きい金属はどれ？", ["カリウム(K)", "金(Au)", "銀(Ag)", "銅(Cu)"], "カリウム(K)"),
+]
 
-/* ── hud bar ── */
-.hud {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(0,245,212,0.2);
-    border-radius: 12px;
-    padding: 0.6rem 1.2rem;
-    margin-bottom: 1rem;
-    font-family: 'Orbitron', monospace;
-    font-size: 0.8rem;
-    gap: 0.5rem;
-}
-.hud-item { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.hud-label { color: #6CBFD4; font-size: 0.6rem; letter-spacing: 0.15em; }
-.hud-value { color: #00F5D4; font-size: 1.1rem; font-weight: 700; }
-.hud-combo { color: #FF6B35; }
-.hud-time  { color: #FFD166; }
-
-/* ── experiment gauge ── */
-.gauge-wrap { margin-bottom: 1.2rem; }
-.gauge-label {
-    font-size: 0.7rem;
-    color: #6CBFD4;
-    letter-spacing: 0.15em;
-    margin-bottom: 4px;
-    display: flex;
-    justify-content: space-between;
-}
-.gauge-outer {
-    height: 18px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 9px;
-    border: 1px solid rgba(0,245,212,0.25);
-    overflow: hidden;
-    position: relative;
-}
-.gauge-inner {
-    height: 100%;
-    border-radius: 9px;
-    transition: width 0.4s cubic-bezier(.4,2,.6,1);
-    position: relative;
-}
-.gauge-inner::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 100%);
-    border-radius: 9px;
+LEVELS = {
+    1: ("初級", LEVEL1_QUESTIONS, "#dbe9ff"),
+    2: ("中級", LEVEL2_QUESTIONS, "#dbffe4"),
+    3: ("上級", LEVEL3_QUESTIONS, "#fff3db"),
+    4: ("超級", LEVEL4_QUESTIONS, "#ffdbdb"),
 }
 
-/* ── question card ── */
-.q-card {
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(0,245,212,0.25);
-    border-radius: 16px;
-    padding: 1.4rem 1.6rem;
-    margin-bottom: 1.2rem;
-    position: relative;
-}
-.q-type-badge {
-    display: inline-block;
-    font-size: 0.65rem;
-    letter-spacing: 0.15em;
-    padding: 2px 10px;
-    border-radius: 20px;
-    margin-bottom: 0.7rem;
-    font-family: 'Orbitron', monospace;
-}
-.q-text {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #E8F4FD;
-    line-height: 1.5;
-}
-
-/* ── answer buttons ── */
-.stButton > button {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1.5px solid rgba(0,245,212,0.35) !important;
-    color: #E8F4FD !important;
-    border-radius: 10px !important;
-    font-family: 'Exo 2', sans-serif !important;
-    font-size: 0.95rem !important;
-    font-weight: 600 !important;
-    padding: 0.55rem 1rem !important;
-    width: 100% !important;
-    text-align: left !important;
-    transition: all 0.15s !important;
-    min-height: 52px !important;
-}
-.stButton > button:hover {
-    background: rgba(0,245,212,0.12) !important;
-    border-color: #00F5D4 !important;
-    transform: translateX(4px) !important;
-    box-shadow: 0 0 14px rgba(0,245,212,0.2) !important;
-}
-
-/* ── feedback ── */
-.feedback-correct {
-    background: rgba(0,245,212,0.12);
-    border: 1.5px solid #00F5D4;
-    border-radius: 12px;
-    padding: 0.8rem 1.2rem;
-    color: #00F5D4;
-    font-weight: 600;
-    margin-bottom: 0.8rem;
-}
-.feedback-wrong {
-    background: rgba(255,107,53,0.12);
-    border: 1.5px solid #FF6B35;
-    border-radius: 12px;
-    padding: 0.8rem 1.2rem;
-    color: #FF6B35;
-    font-weight: 600;
-    margin-bottom: 0.8rem;
-}
-.explosion-banner {
-    background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(123,45,139,0.2));
-    border: 2px solid #FF6B35;
-    border-radius: 14px;
-    padding: 0.9rem;
-    text-align: center;
-    font-family: 'Orbitron', monospace;
-    font-size: 1rem;
-    color: #FF6B35;
-    animation: pulse 0.6s ease-in-out;
-    margin-bottom: 0.8rem;
-}
-@keyframes pulse {
-    0%   { transform: scale(0.95); opacity: 0.6; }
-    50%  { transform: scale(1.03); opacity: 1; }
-    100% { transform: scale(1);    opacity: 1; }
-}
-
-/* ── result screen ── */
-.result-card {
-    background: rgba(255,255,255,0.04);
-    border: 2px solid rgba(0,245,212,0.4);
-    border-radius: 20px;
-    padding: 2rem;
-    text-align: center;
-    margin: 1rem 0;
-}
-.result-rank {
-    font-family: 'Orbitron', monospace;
-    font-size: 2.8rem;
-    font-weight: 900;
-    margin-bottom: 0.3rem;
-}
-.result-score {
-    font-family: 'Orbitron', monospace;
-    font-size: 1.6rem;
-    color: #00F5D4;
-    margin-bottom: 0.5rem;
-}
-
-/* ── streamlit overrides ── */
-div[data-testid="column"] { gap: 0.5rem; }
-.stSelectbox > div { background: #0D1B2A !important; }
-hr { border-color: rgba(0,245,212,0.15) !important; }
-p { color: #C8DDE8; }
-</style>
-""", unsafe_allow_html=True)
+MAX_STREAK_FOR_BRIGHTNESS = 8  # このくらい連続正解すると最大の明るさになる
 
 
-# ─── Session state init ────────────────────────────────────────────────────────
-def init_state():
-    defaults = dict(
-        screen="home",         # home | playing | result
-        level=None,
-        questions=[],
-        q_index=0,
-        score=0,
-        combo=0,
-        max_combo=0,
-        multiplier=1.0,
-        exp_gauge=0,           # 0-100 experiment gauge
-        explosion_pending=False,
-        answered=False,
-        correct_this=False,
-        chosen_idx=None,
-        q_start_time=None,
-        total_time=0.0,
-        time_bonus=0,
-        lives=3,
-        wrong_this_q=False,
-    )
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
-init_state()
-S = st.session_state
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip("#")
+    return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
 
 
-# ─── Helpers ──────────────────────────────────────────────────────────────────
-GAUGE_COLORS = {
-    1: "#00F5D4",
-    2: "#4FC3F7",
-    3: "#AB47BC",
-    4: "#FF6B35",
-}
-
-def gauge_color(level):
-    return GAUGE_COLORS.get(level, "#00F5D4")
-
-def rank(score, total):
-    pct = score / max(total, 1)
-    if pct >= 0.95: return "🥇 S RANK", "#FFD700"
-    if pct >= 0.80: return "🥈 A RANK", "#00F5D4"
-    if pct >= 0.60: return "🥉 B RANK", "#7B2D8B"
-    if pct >= 0.40: return "⚗️ C RANK", "#4FC3F7"
-    return "🔬 D RANK", "#FF6B35"
-
-def start_game(level):
-    pool = QUESTIONS_BY_LEVEL[level][:]
-    random.shuffle(pool)
-    S.level       = level
-    S.questions   = pool[:10]
-    S.q_index     = 0
-    S.score       = 0
-    S.combo       = 0
-    S.max_combo   = 0
-    S.multiplier  = 1.0
-    S.exp_gauge   = 0
-    S.explosion_pending = False
-    S.answered    = False
-    S.correct_this= False
-    S.chosen_idx  = None
-    S.q_start_time= time.time()
-    S.total_time  = 0.0
-    S.time_bonus  = 0
-    S.lives       = 3
-    S.wrong_this_q= False
-    S.screen      = "playing"
-
-def advance():
-    S.q_index     += 1
-    S.answered    = False
-    S.correct_this= False
-    S.chosen_idx  = None
-    S.explosion_pending = False
-    S.q_start_time= time.time()
-    S.wrong_this_q= False
-    if S.q_index >= len(S.questions):
-        S.screen = "result"
-
-def answer(idx):
-    if S.answered:
-        return
-    S.answered   = True
-    S.chosen_idx = idx
-    q = S.questions[S.q_index]
-    elapsed = time.time() - S.q_start_time
-    S.total_time += elapsed
-
-    level_info = LEVEL_INFO[S.level]
-    time_limit = level_info["time"]
-    base_pts   = level_info["base_pts"]
-
-    if idx == q["answer"]:
-        S.correct_this = True
-        # time bonus
-        if elapsed < time_limit:
-            tb = int((1 - elapsed / time_limit) * base_pts * 0.5)
-        else:
-            tb = 0
-        S.time_bonus = tb
-
-        # combo & multiplier
-        S.combo += 1
-        S.max_combo = max(S.max_combo, S.combo)
-        S.multiplier = round(min(1.0 + (S.combo - 1) * 0.25, 3.0), 2)
-
-        # exp gauge
-        gauge_gain = 20 + (S.combo * 5)
-        S.exp_gauge = min(S.exp_gauge + gauge_gain, 100)
-        if S.exp_gauge >= 100:
-            S.explosion_pending = True
-            S.exp_gauge = 0
-
-        pts = int((base_pts + tb) * S.multiplier)
-        if S.explosion_pending:
-            pts = int(pts * 1.5)  # explosion bonus
-        S.score += pts
-    else:
-        S.correct_this = False
-        S.combo        = 0
-        S.multiplier   = 1.0
-        S.exp_gauge    = max(S.exp_gauge - 15, 0)
-        if not S.wrong_this_q:
-            S.lives -= 1
-            S.wrong_this_q = True
+def rgb_to_hex(rgb):
+    return "#%02x%02x%02x" % tuple(max(0, min(255, int(c))) for c in rgb)
 
 
-# ─── SCREEN: HOME ─────────────────────────────────────────────────────────────
-if S.screen == "home":
-    st.markdown('<h1 class="game-title">⚗️ ChemLab Blast</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="game-sub">元素・反応式・実験 — 化学をぶっ壊せ</p>', unsafe_allow_html=True)
-
-    # System explanation
-    with st.expander("🔥 ゲームシステムを見る"):
-        st.markdown("""
-**⚡ コンボ & 倍率システム**  
-連続正解でコンボが積み上がり、得点倍率が最大 **×3.0** まで上昇！
-
-**⏱ タイムボーナス**  
-制限時間内に早く答えるほどボーナス得点 UP。瞬発力が試される！
-
-**🧪 実験ゲージ**  
-正解でゲージが溜まり **100%** に達すると **EXPLOSION!! 💥**  
-その問題の得点が **×1.5** になる大チャンス。ゲージは間違えると減る。
-
-**❤️ ライフ制**  
-ライフは3つ。間違えるたびに1消費（問題ごとに1回まで）。
-
-**🏆 ランク判定**  
-最終スコアで S / A / B / C / D ランクを認定。S ランクを目指せ！
-        """)
-
-    st.markdown("---")
-    st.markdown("#### レベルを選んでスタート")
-
-    cols = st.columns(4)
-    for lv in [1, 2, 3, 4]:
-        info = LEVEL_INFO[lv]
-        with cols[lv - 1]:
-            color = gauge_color(lv)
-            st.markdown(f"""
-<div class="level-card" style="border-color:{color}22; background:rgba(255,255,255,0.03);">
-  <div style="font-family:'Orbitron',monospace; color:{color}; font-size:1.3rem; font-weight:900;">Lv.{lv}</div>
-  <div style="font-size:1.4rem; margin:4px 0;">{info['icon']}</div>
-  <div style="font-weight:700; color:#E8F4FD; font-size:0.85rem;">{info['name']}</div>
-  <div style="color:#6CBFD4; font-size:0.7rem; margin-top:4px;">{info['desc']}</div>
-  <div style="color:{color}; font-size:0.7rem; margin-top:6px; font-family:'Orbitron',monospace;">⏱ {info['time']}秒</div>
-</div>
-""", unsafe_allow_html=True)
-            if st.button(f"Lv.{lv} スタート", key=f"start_{lv}", use_container_width=True):
-                start_game(lv)
-                st.rerun()
+def brighten_color(base_hex, streak):
+    """連続正解数(streak)に応じて背景色を白に近づけて明るくする"""
+    r, g, b = hex_to_rgb(base_hex)
+    ratio = min(streak, MAX_STREAK_FOR_BRIGHTNESS) / MAX_STREAK_FOR_BRIGHTNESS
+    r = r + (255 - r) * ratio
+    g = g + (255 - g) * ratio
+    b = b + (255 - b) * ratio
+    return rgb_to_hex((r, g, b))
 
 
-# ─── SCREEN: PLAYING ──────────────────────────────────────────────────────────
-elif S.screen == "playing":
-    if S.lives <= 0 and not S.answered:
-        S.screen = "result"
-        st.rerun()
+class ChemistryGame(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("化学クイズゲーム")
+        self.geometry("700x520")
+        self.resizable(False, False)
 
-    q = S.questions[S.q_index]
-    info = LEVEL_INFO[S.level]
-    color = gauge_color(S.level)
-    total_qs = len(S.questions)
+        self.title_font = tkfont.Font(size=22, weight="bold")
+        self.normal_font = tkfont.Font(size=14)
+        self.button_font = tkfont.Font(size=13)
+        self.small_font = tkfont.Font(size=11)
 
-    # HUD
-    hearts = "❤️" * S.lives + "🖤" * (3 - S.lives)
-    elapsed_now = time.time() - S.q_start_time if not S.answered else 0
-    remaining = max(info["time"] - elapsed_now, 0)
+        self.level = None
+        self.base_color = "#ffffff"
+        self.questions = []
+        self.q_index = 0
+        self.score = 0
+        self.streak = 0
 
-    st.markdown(f"""
-<div class="hud">
-  <div class="hud-item"><span class="hud-label">SCORE</span><span class="hud-value">{S.score:,}</span></div>
-  <div class="hud-item"><span class="hud-label">COMBO</span><span class="hud-value hud-combo">×{S.multiplier:.2f}</span></div>
-  <div class="hud-item"><span class="hud-label">Q</span><span class="hud-value">{S.q_index+1}/{total_qs}</span></div>
-  <div class="hud-item"><span class="hud-label">TIME</span><span class="hud-value hud-time">{remaining:.0f}s</span></div>
-  <div class="hud-item"><span class="hud-label">LIFE</span><span class="hud-value" style="font-size:0.9rem;">{hearts}</span></div>
-</div>
-""", unsafe_allow_html=True)
+        self.container = tk.Frame(self)
+        self.container.pack(fill="both", expand=True)
 
-    # Experiment Gauge
-    gauge_w = S.exp_gauge
-    st.markdown(f"""
-<div class="gauge-wrap">
-  <div class="gauge-label">
-    <span>🧪 EXPERIMENT GAUGE</span>
-    <span style="color:{color};">{S.exp_gauge}% {'⚡ COMBO ×' + str(S.combo) if S.combo > 1 else ''}</span>
-  </div>
-  <div class="gauge-outer">
-    <div class="gauge-inner" style="width:{gauge_w}%; background:linear-gradient(90deg,{color}88,{color});"></div>
-  </div>
-</div>
-""", unsafe_allow_html=True)
+        self.show_start_screen()
 
-    # Explosion banner
-    if S.explosion_pending and S.answered:
-        st.markdown('<div class="explosion-banner">💥 EXPLOSION!! 得点 ×1.5 ボーナス発動！</div>', unsafe_allow_html=True)
+    # -----------------------------------------------------
+    # 画面：スタート（レベル選択）
+    # -----------------------------------------------------
+    def clear_container(self):
+        for widget in self.container.winfo_children():
+            widget.destroy()
 
-    # Question card
-    type_colors = {
-        "element": ("#00F5D4", "元素記号"),
-        "reaction": ("#AB47BC", "化学反応式"),
-        "experiment": ("#FF6B35", "実験結果"),
-    }
-    tc, tl = type_colors.get(q.get("type", "element"), ("#00F5D4", "化学"))
-    st.markdown(f"""
-<div class="q-card">
-  <span class="q-type-badge" style="background:{tc}22; color:{tc}; border:1px solid {tc}55;">
-    {tl}
-  </span>
-  <div class="q-text">{q["question"]}</div>
-</div>
-""", unsafe_allow_html=True)
+    def show_start_screen(self):
+        self.configure(bg="#ffffff")
+        self.container.configure(bg="#ffffff")
+        self.clear_container()
 
-    # Answer choices
-    for i, opt in enumerate(q["options"]):
-        label = f"{'ABCD'[i]}. {opt}"
-        if st.button(label, key=f"opt_{i}", use_container_width=True):
-            if not S.answered:
-                answer(i)
-                st.rerun()
+        tk.Label(
+            self.container, text="化学クイズゲーム",
+            font=self.title_font, bg="#ffffff"
+        ).pack(pady=(40, 10))
 
-    # Feedback
-    if S.answered:
-        correct_opt = q["options"][q["answer"]]
-        if S.correct_this:
-            pts_gained = int((info["base_pts"] + S.time_bonus) * (S.multiplier / (1 + 0.25 * max(S.combo - 1, 0)) if S.combo > 1 else 1.0))
-            bonus_str = f" ⚡ タイムボーナス +{S.time_bonus}" if S.time_bonus > 0 else ""
-            combo_str = f" 🔥 コンボ {S.combo}×！" if S.combo > 1 else ""
-            st.markdown(f'<div class="feedback-correct">✅ 正解！{bonus_str}{combo_str}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="feedback-wrong">❌ 不正解… 正解は「{correct_opt}」でした。</div>', unsafe_allow_html=True)
+        tk.Label(
+            self.container,
+            text="モードを選んでください\n連続正解すると背景がどんどん明るくなります！",
+            font=self.normal_font, bg="#ffffff", justify="center"
+        ).pack(pady=(0, 30))
 
-        if q.get("explanation"):
-            st.info(f"💡 {q['explanation']}")
+        for level_num, (name, questions, color) in LEVELS.items():
+            btn = tk.Button(
+                self.container,
+                text=f"{level_num}. {name}　（全{len(questions)}問）",
+                font=self.button_font,
+                width=30, height=2,
+                bg=color,
+                activebackground=color,
+                command=lambda n=level_num: self.start_level(n)
+            )
+            btn.pack(pady=6)
 
-        col1, col2 = st.columns([1, 2])
-        with col2:
-            label = "次の問題 →" if S.q_index < total_qs - 1 else "結果を見る 🏁"
-            if st.button(label, type="primary", use_container_width=True):
-                advance()
-                st.rerun()
+    # -----------------------------------------------------
+    # ゲーム開始
+    # -----------------------------------------------------
+    def start_level(self, level_num):
+        self.level = level_num
+        name, questions, color = LEVELS[level_num]
+        self.base_color = color
+        self.questions = questions[:]
+        random.shuffle(self.questions)
 
-    # Time-up check (auto-advance after time_limit if not answered)
-    if not S.answered:
-        elapsed_check = time.time() - S.q_start_time
-        if elapsed_check > info["time"]:
-            answer(-1)  # wrong (no selection)
-            st.rerun()
-        else:
-            time.sleep(0.5)
-            st.rerun()
+        self.q_index = 0
+        self.score = 0
+        self.streak = 0
 
+        self.update_background()
+        self.show_question_screen()
 
-# ─── SCREEN: RESULT ───────────────────────────────────────────────────────────
-elif S.screen == "result":
-    info = LEVEL_INFO[S.level]
-    max_possible = info["base_pts"] * len(S.questions) * 3  # rough max with multiplier
-    rank_txt, rank_col = rank(S.score, max_possible)
+    def update_background(self):
+        color = brighten_color(self.base_color, self.streak)
+        self.configure(bg=color)
+        self.container.configure(bg=color)
 
-    st.markdown('<h1 class="game-title">RESULT</h1>', unsafe_allow_html=True)
-    st.markdown(f"""
-<div class="result-card">
-  <div class="result-rank" style="color:{rank_col};">{rank_txt}</div>
-  <div class="result-score">{S.score:,} pt</div>
-  <div style="color:#6CBFD4; font-size:0.85rem;">Lv.{S.level} {info['name']} | 10問</div>
-</div>
-""", unsafe_allow_html=True)
+    # -----------------------------------------------------
+    # 画面：問題
+    # -----------------------------------------------------
+    def show_question_screen(self):
+        self.clear_container()
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        correct_count = sum(
-            1 for i, q in enumerate(S.questions)
-            if i < S.q_index
+        if self.q_index >= len(self.questions):
+            self.show_result_screen()
+            return
+
+        question, choices, answer = self.questions[self.q_index]
+        bg = self.container["bg"]
+
+        name, _, _ = LEVELS[self.level]
+        header = tk.Label(
+            self.container,
+            text=f"【{name}】 第{self.q_index + 1}問 / 全{len(self.questions)}問"
+                 f"　　得点: {self.score}　　連続正解: {self.streak}",
+            font=self.small_font, bg=bg
         )
-        st.metric("最大コンボ", f"×{S.max_combo}")
-    with col2:
-        avg = S.total_time / max(S.q_index, 1)
-        st.metric("平均回答時間", f"{avg:.1f}秒")
-    with col3:
-        st.metric("残りライフ", f"❤️ × {S.lives}")
+        header.pack(pady=(20, 10))
 
-    st.markdown("---")
+        q_label = tk.Label(
+            self.container, text=question, font=self.normal_font,
+            bg=bg, wraplength=600, justify="center"
+        )
+        q_label.pack(pady=(10, 30))
 
-    # Retry or home buttons
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("🔄 もう一度", use_container_width=True):
-            start_game(S.level)
-            st.rerun()
-    with c2:
-        next_lv = min(S.level + 1, 4)
-        if S.level < 4:
-            if st.button(f"⬆️ Lv.{next_lv} に挑戦", use_container_width=True):
-                start_game(next_lv)
-                st.rerun()
+        shuffled_choices = choices[:]
+        random.shuffle(shuffled_choices)
+
+        self.feedback_label = tk.Label(
+            self.container, text="", font=self.normal_font, bg=bg
+        )
+        self.feedback_label.pack(pady=(0, 10))
+
+        btn_frame = tk.Frame(self.container, bg=bg)
+        btn_frame.pack()
+
+        self.choice_buttons = []
+        for choice in shuffled_choices:
+            btn = tk.Button(
+                btn_frame, text=choice, font=self.button_font,
+                width=25, height=2,
+                command=lambda c=choice, a=answer: self.check_answer(c, a)
+            )
+            btn.pack(pady=5)
+            self.choice_buttons.append(btn)
+
+    def check_answer(self, chosen, answer):
+        for btn in self.choice_buttons:
+            btn.config(state="disabled")
+
+        if chosen == answer:
+            self.score += 1
+            self.streak += 1
+            self.feedback_label.config(text="○ 正解！", fg="#0a8a2f")
         else:
-            st.button("🏆 最高難度クリア！", disabled=True, use_container_width=True)
-    with c3:
-        if st.button("🏠 ホームへ", use_container_width=True):
-            S.screen = "home"
-            st.rerun()
+            self.streak = 0
+            self.feedback_label.config(
+                text=f"× 不正解…　正解は「{answer}」", fg="#c0392b"
+            )
+
+        self.update_background()
+        self.container.configure(bg=self.container["bg"])
+        self.feedback_label.configure(bg=self.container["bg"])
+
+        # 少し待ってから次の問題へ
+        self.after(900, self.next_question)
+
+    def next_question(self):
+        self.q_index += 1
+        self.show_question_screen()
+
+    # -----------------------------------------------------
+    # 画面：結果
+    # -----------------------------------------------------
+    def show_result_screen(self):
+        self.clear_container()
+        bg = self.container["bg"]
+        name, _, _ = LEVELS[self.level]
+
+        tk.Label(
+            self.container, text="結果発表",
+            font=self.title_font, bg=bg
+        ).pack(pady=(50, 20))
+
+        total = len(self.questions)
+        rate = 0 if total == 0 else round(self.score / total * 100)
+
+        tk.Label(
+            self.container,
+            text=f"モード：{name}\n得点：{self.score} / {total}　（正答率 {rate}%）",
+            font=self.normal_font, bg=bg, justify="center"
+        ).pack(pady=(0, 30))
+
+        tk.Button(
+            self.container, text="もう一度このモードで挑戦",
+            font=self.button_font, width=28, height=2,
+            command=lambda: self.start_level(self.level)
+        ).pack(pady=8)
+
+        tk.Button(
+            self.container, text="モード選択に戻る",
+            font=self.button_font, width=28, height=2,
+            command=self.show_start_screen
+        ).pack(pady=8)
+
+
+if __name__ == "__main__":
+    app = ChemistryGame()
+    app.mainloop()
