@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-化学クイズゲーム（Streamlit版）
+化学クイズゲーム（Streamlit版・拡張版）
 --------------------------------------------
 実行方法:
     pip install streamlit
     streamlit run chemistry_game_streamlit.py
 
 ・4段階の難易度モード（初級／中級／上級／超級）
-・各モードたくさんの問題（合計110問）
-・連続正解するほど背景がだんだん明るくなる
+・各モードたくさんの問題（合計150問）
+・連続正解するほど背景がだんだん明るくなる（レベルごとに配色を変更）
 ・正解するとコインがたまり、ショップでアイテムが買える
     - ヒント：はずれの選択肢を2つ消す
     - スキップ：この問題を飛ばす
     - シールド：1回だけ不正解を無効にして連続正解を守る
+    - ダブルコイン：次に正解した時のコインが2倍になる
+    - 全消しヒント：はずれの選択肢を全部消して正解だけにする
 ・コインとアイテムはファイルに保存され、次回起動時も引き継がれる
 ・使用ライブラリは streamlit / random / json / os のみ（AI・外部通信なし）
 """
@@ -23,7 +25,7 @@ import json
 import os
 
 # =========================================================
-# 問題データ（4段階・合計110問）
+# 問題データ（4段階・合計150問）
 # =========================================================
 
 LEVEL1_QUESTIONS = [
@@ -57,6 +59,16 @@ LEVEL1_QUESTIONS = [
     ("リンの元素記号は？", ["P", "Pb", "Pt", "Po"], "P"),
     ("鉛の元素記号は？", ["Pb", "P", "Pt", "Po"], "Pb"),
     ("水銀の元素記号は？", ["Hg", "H", "He", "Ho"], "Hg"),
+    ("アルゴンの元素記号は？", ["Ar", "Al", "Au", "As"], "Ar"),
+    ("バリウムの元素記号は？", ["Ba", "Br", "B", "Bi"], "Ba"),
+    ("マンガンの元素記号は？", ["Mn", "Mg", "Mo", "Md"], "Mn"),
+    ("コバルトの元素記号は？", ["Co", "Cu", "Cr", "Ca"], "Co"),
+    ("ニッケルの元素記号は？", ["Ni", "Na", "Ne", "N"], "Ni"),
+    ("スズの元素記号は？", ["Sn", "S", "Si", "Sr"], "Sn"),
+    ("クロムの元素記号は？", ["Cr", "Co", "Cu", "Ca"], "Cr"),
+    ("チタンの元素記号は？", ["Ti", "Sn", "Ta", "Te"], "Ti"),
+    ("ヒ素の元素記号は？", ["As", "Ag", "Al", "Au"], "As"),
+    ("白金（プラチナ）の元素記号は？", ["Pt", "Pb", "Po", "P"], "Pt"),
 ]
 
 LEVEL2_QUESTIONS = [
@@ -90,6 +102,16 @@ LEVEL2_QUESTIONS = [
     ("金属が酸に溶けるとき多くの場合発生する気体は？", ["水素", "酸素", "窒素", "二酸化炭素"], "水素"),
     ("燃焼に必ず必要な気体は？", ["酸素", "窒素", "水素", "二酸化炭素"], "酸素"),
     ("空気中で体積の割合が最も多い気体は？", ["窒素", "酸素", "二酸化炭素", "アルゴン"], "窒素"),
+    ("硫化水素の化学式は？", ["H2S", "SO2", "H2SO4", "S2"], "H2S"),
+    ("二酸化窒素の化学式は？", ["NO2", "NO", "N2O", "HNO3"], "NO2"),
+    ("一酸化窒素の化学式は？", ["NO", "NO2", "N2O", "N2O3"], "NO"),
+    ("炭酸の化学式は？", ["H2CO3", "CO2", "HCO3", "CaCO3"], "H2CO3"),
+    ("リン酸の化学式は？", ["H3PO4", "HPO3", "P2O5", "H3PO3"], "H3PO4"),
+    ("水酸化カリウムの化学式は？", ["KOH", "K2O", "KCl", "KHCO3"], "KOH"),
+    ("アンモニア水は何性？", ["アルカリ性", "酸性", "中性", "不定"], "アルカリ性"),
+    ("酢酸水溶液は何性？", ["酸性", "アルカリ性", "中性", "不定"], "酸性"),
+    ("中性の水溶液のpHはいくつ？", ["7", "0", "14", "1"], "7"),
+    ("うすい塩酸にマグネシウムを入れると発生する気体は？", ["水素", "酸素", "二酸化炭素", "窒素"], "水素"),
 ]
 
 LEVEL3_QUESTIONS = [
@@ -118,6 +140,16 @@ LEVEL3_QUESTIONS = [
     ("アルカリ金属に分類される元素は？", ["ナトリウム", "塩素", "ヘリウム", "鉄"], "ナトリウム"),
     ("遷移元素に分類される元素は？", ["鉄", "ナトリウム", "塩素", "ヘリウム"], "鉄"),
     ("化学反応式の係数は何を表す？", ["物質の粒子（分子・イオン）の数の比", "反応にかかる時間", "物質の色", "反応の温度"], "物質の粒子（分子・イオン）の数の比"),
+    ("化学反応の前後で物質の総質量は変わらないという法則は？", ["質量保存の法則", "定比例の法則", "気体反応の法則", "倍数比例の法則"], "質量保存の法則"),
+    ("一つの化合物中の成分元素の質量比は常に一定という法則は？", ["定比例の法則", "質量保存の法則", "気体反応の法則", "ボイルの法則"], "定比例の法則"),
+    ("原子核に最も近い電子殻を何という？", ["K殻", "L殻", "M殻", "N殻"], "K殻"),
+    ("最外殻電子のうち化学結合に関わる電子を何という？", ["価電子", "自由電子", "内殻電子", "共有電子"], "価電子"),
+    ("貴ガス（希ガス）の最外殻電子の状態は？", ["安定している（閉殻）", "反応しやすい", "不安定", "常に1個だけ"], "安定している（閉殻）"),
+    ("分子結晶（例：ドライアイス）の一般的な特徴は？", ["融点が低い", "非常に硬い", "電気をよく通す", "延性に富む"], "融点が低い"),
+    ("共有結合の結晶（例：ダイヤモンド）の特徴は？", ["非常に硬い", "やわらかい", "電気をよく通す", "融点が低い"], "非常に硬い"),
+    ("水溶液の水素イオン濃度からpHを測定する器具の一つは？", ["pHメーター", "気圧計", "温度計", "比重計"], "pHメーター"),
+    ("弱酸・弱塩基が水溶液中で電離する割合は？", ["一部だけ電離する", "完全に電離する", "全く電離しない", "常に半分電離する"], "一部だけ電離する"),
+    ("強酸・強塩基が水溶液中で電離する割合は？", ["ほぼ完全に電離する", "一部だけ電離する", "全く電離しない", "常に半分電離する"], "ほぼ完全に電離する"),
 ]
 
 LEVEL4_QUESTIONS = [
@@ -146,24 +178,36 @@ LEVEL4_QUESTIONS = [
     ("電池の負極で一般に起こる反応は？", ["酸化", "還元", "中和", "電離"], "酸化"),
     ("電池の正極で一般に起こる反応は？", ["還元", "酸化", "中和", "電離"], "還元"),
     ("炭素骨格が環状になっている有機化合物を何という？", ["環式化合物", "鎖式化合物", "無機化合物", "高分子化合物"], "環式化合物"),
+    ("0.2mol/Lの水酸化ナトリウム水溶液250mLに含まれるNaOHの物質量は？", ["0.05mol", "0.5mol", "0.005mol", "5mol"], "0.05mol"),
+    ("アボガドロの法則が示すのは？", ["同温同圧同体積の気体は同じ数の分子を含む", "気体の体積は圧力に反比例する", "気体の体積は温度に比例する", "反応熱は一定である"], "同温同圧同体積の気体は同じ数の分子を含む"),
+    ("ボイルの法則が示すのは？", ["一定温度で気体の体積は圧力に反比例する", "一定圧力で気体の体積は温度に比例する", "気体の質量は保存される", "気体の密度は一定"], "一定温度で気体の体積は圧力に反比例する"),
+    ("シャルルの法則が示すのは？", ["一定圧力で気体の体積は絶対温度に比例する", "一定温度で気体の体積は圧力に反比例する", "気体の質量は保存される", "気体の密度は一定"], "一定圧力で気体の体積は絶対温度に比例する"),
+    ("有機化合物で炭素原子間がすべて単結合のものを何という？", ["飽和化合物", "不飽和化合物", "芳香族化合物", "無機化合物"], "飽和化合物"),
+    ("炭素原子間に二重結合や三重結合を含むものを何という？", ["不飽和化合物", "飽和化合物", "無機化合物", "単体"], "不飽和化合物"),
+    ("けん化反応で油脂と反応させる物質は？", ["水酸化ナトリウム", "塩酸", "硫酸", "アンモニア"], "水酸化ナトリウム"),
+    ("タンパク質を構成する基本単位は？", ["アミノ酸", "グルコース", "脂肪酸", "ヌクレオチド"], "アミノ酸"),
+    ("デンプンやセルロースのような高分子を何という？", ["多糖類", "単糖類", "二糖類", "アミノ酸"], "多糖類"),
+    ("化学反応の速さは温度が高くなると一般に？", ["速くなる", "遅くなる", "変わらない", "止まる"], "速くなる"),
 ]
 
 LEVELS = {
-    1: ("初級", LEVEL1_QUESTIONS, "#dbe9ff"),
-    2: ("中級", LEVEL2_QUESTIONS, "#dbffe4"),
-    3: ("上級", LEVEL3_QUESTIONS, "#fff3db"),
-    4: ("超級", LEVEL4_QUESTIONS, "#ffdbdb"),
+    1: ("初級", LEVEL1_QUESTIONS, "#ffe1ef"),   # 桜色
+    2: ("中級", LEVEL2_QUESTIONS, "#dff7e6"),   # ミントグリーン
+    3: ("上級", LEVEL3_QUESTIONS, "#fff4d6"),   # レモンイエロー
+    4: ("超級", LEVEL4_QUESTIONS, "#e3e0ff"),   # ラベンダー
 }
 
 MAX_STREAK_FOR_BRIGHTNESS = 8  # このくらい連続正解すると最大の明るさになる
 
 # =========================================================
-# アイテム定義
+# アイテム定義（5種類）
 # =========================================================
 ITEMS = {
-    "hint":   {"name": "ヒント（２択に絞る）", "cost": 8,  "desc": "はずれの選択肢を2つ消します"},
-    "skip":   {"name": "スキップ",             "cost": 12, "desc": "この問題を飛ばします（コインは増えません）"},
-    "shield": {"name": "シールド",             "cost": 15, "desc": "1回だけ不正解を無効にして連続正解を守ります"},
+    "hint":   {"name": "💡 ヒント",         "cost": 8,  "desc": "はずれの選択肢を2つ消します"},
+    "reveal": {"name": "✨ 全消しヒント",     "cost": 22, "desc": "はずれの選択肢を全部消して正解だけにします"},
+    "skip":   {"name": "⏭ スキップ",        "cost": 12, "desc": "この問題を飛ばします（コインは増えません）"},
+    "shield": {"name": "🛡 シールド",        "cost": 15, "desc": "1回だけ不正解を無効にして連続正解を守ります"},
+    "double": {"name": "🪙 ダブルコイン",     "cost": 10, "desc": "次に正解した時のコインが2倍になります"},
 }
 
 SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chemistry_save.json")
@@ -173,7 +217,7 @@ SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chemistry_
 # セーブデータ読み書き
 # =========================================================
 def load_save():
-    default = {"coins": 0, "inventory": {"hint": 0, "skip": 0, "shield": 0}}
+    default = {"coins": 0, "inventory": {k: 0 for k in ITEMS}}
     if os.path.exists(SAVE_PATH):
         try:
             with open(SAVE_PATH, "r", encoding="utf-8") as f:
@@ -261,7 +305,8 @@ def init_state():
     st.session_state.coins_earned_session = 0
 
     st.session_state.shield_active = False
-    st.session_state.hint_used_this_q = False
+    st.session_state.double_active = False
+    st.session_state.choices_locked_this_q = False  # ヒント/全消しを使用済みか
     st.session_state.disabled_choices = []
     st.session_state.current_choices = []
     st.session_state.current_answer = None
@@ -285,7 +330,7 @@ def prepare_question():
     st.session_state.current_choices = shuffled
     st.session_state.current_answer = answer
     st.session_state.disabled_choices = []
-    st.session_state.hint_used_this_q = False
+    st.session_state.choices_locked_this_q = False
     st.session_state.answered = False
     st.session_state.feedback_text = ""
     st.session_state.prepared_q_index = st.session_state.q_index
@@ -303,6 +348,7 @@ def start_level(level_num):
     st.session_state.streak = 0
     st.session_state.coins_earned_session = 0
     st.session_state.shield_active = False
+    st.session_state.double_active = False
     st.session_state.prepared_q_index = -1
     st.session_state.screen = "quiz"
 
@@ -319,9 +365,15 @@ def check_answer(chosen):
         st.session_state.score += 1
         st.session_state.streak += 1
         earned = coins_for_streak(st.session_state.streak)
+        if st.session_state.double_active:
+            earned *= 2
+            st.session_state.double_active = False
+            bonus_msg = "（ダブルコイン発動！）"
+        else:
+            bonus_msg = ""
         st.session_state.coins += earned
         st.session_state.coins_earned_session += earned
-        st.session_state.feedback_text = f"○ 正解！　+{earned} コイン"
+        st.session_state.feedback_text = f"○ 正解！　+{earned} コイン {bonus_msg}"
         st.session_state.feedback_color = "#0a8a2f"
     else:
         if st.session_state.shield_active:
@@ -340,13 +392,23 @@ def check_answer(chosen):
 
 
 def use_hint():
-    if st.session_state.hint_used_this_q or st.session_state.inventory.get("hint", 0) <= 0:
+    if st.session_state.choices_locked_this_q or st.session_state.inventory.get("hint", 0) <= 0:
         return
     wrong = [c for c in st.session_state.current_choices if c != st.session_state.current_answer]
     random.shuffle(wrong)
     st.session_state.disabled_choices = wrong[:2]
     st.session_state.inventory["hint"] -= 1
-    st.session_state.hint_used_this_q = True
+    st.session_state.choices_locked_this_q = True
+    write_save()
+
+
+def use_reveal():
+    if st.session_state.choices_locked_this_q or st.session_state.inventory.get("reveal", 0) <= 0:
+        return
+    wrong = [c for c in st.session_state.current_choices if c != st.session_state.current_answer]
+    st.session_state.disabled_choices = wrong
+    st.session_state.inventory["reveal"] -= 1
+    st.session_state.choices_locked_this_q = True
     write_save()
 
 
@@ -366,6 +428,14 @@ def use_shield():
     write_save()
 
 
+def use_double():
+    if st.session_state.double_active or st.session_state.inventory.get("double", 0) <= 0:
+        return
+    st.session_state.inventory["double"] -= 1
+    st.session_state.double_active = True
+    write_save()
+
+
 def buy_item(item_id):
     cost = ITEMS[item_id]["cost"]
     if st.session_state.coins >= cost:
@@ -378,7 +448,7 @@ def buy_item(item_id):
 # 画面：スタート
 # =========================================================
 def render_start_screen():
-    apply_background("#ffffff")
+    apply_background("#f5f7ff")
     st.title("🧪 化学クイズゲーム")
     st.markdown(f"### 所持コイン：🪙 {st.session_state.coins} 枚")
     st.write("モードを選んでください。連続正解すると背景が明るくなり、コインもたまります！")
@@ -398,7 +468,7 @@ def render_start_screen():
 # 画面：ショップ
 # =========================================================
 def render_shop_screen():
-    apply_background("#ffffff")
+    apply_background("#f5f7ff")
     st.title("🛒 ショップ")
     st.markdown(f"### 所持コイン：🪙 {st.session_state.coins} 枚")
 
@@ -438,12 +508,18 @@ def render_quiz_screen():
     name, _, _ = LEVELS[st.session_state.level]
     total = len(st.session_state.questions)
 
-    st.markdown(
+    status_line = (
         f"**【{name}】** 第{st.session_state.q_index + 1}問 / 全{total}問　　"
         f"得点: {st.session_state.score}　　連続正解: {st.session_state.streak}　　"
         f"🪙 コイン: {st.session_state.coins}"
     )
-    st.progress((st.session_state.q_index) / total)
+    if st.session_state.shield_active:
+        status_line += "　　🛡 シールド発動中"
+    if st.session_state.double_active:
+        status_line += "　　🪙 ダブルコイン待機中"
+
+    st.markdown(status_line)
+    st.progress(st.session_state.q_index / total)
 
     question, _, _ = st.session_state.questions[st.session_state.q_index]
     st.markdown(f"## {question}")
@@ -471,25 +547,41 @@ def render_quiz_screen():
 
     st.write("---")
     st.caption("アイテムを使う")
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4, c5 = st.columns(5)
 
     with c1:
-        hint_count = st.session_state.inventory.get("hint", 0)
-        if st.button(f"💡 ヒント（{hint_count}）", disabled=(hint_count <= 0 or st.session_state.hint_used_this_q or st.session_state.answered), use_container_width=True):
+        n = st.session_state.inventory.get("hint", 0)
+        if st.button(f"💡\n{n}", disabled=(n <= 0 or st.session_state.choices_locked_this_q or st.session_state.answered),
+                     use_container_width=True, help=ITEMS["hint"]["desc"]):
             use_hint()
             st.rerun()
 
     with c2:
-        skip_count = st.session_state.inventory.get("skip", 0)
-        if st.button(f"⏭ スキップ（{skip_count}）", disabled=(skip_count <= 0 or st.session_state.answered), use_container_width=True):
-            use_skip()
+        n = st.session_state.inventory.get("reveal", 0)
+        if st.button(f"✨\n{n}", disabled=(n <= 0 or st.session_state.choices_locked_this_q or st.session_state.answered),
+                     use_container_width=True, help=ITEMS["reveal"]["desc"]):
+            use_reveal()
             st.rerun()
 
     with c3:
-        shield_count = st.session_state.inventory.get("shield", 0)
-        shield_label = "🛡 使用中" if st.session_state.shield_active else f"🛡 シールド（{shield_count}）"
-        if st.button(shield_label, disabled=(st.session_state.shield_active or shield_count <= 0), use_container_width=True):
+        n = st.session_state.inventory.get("skip", 0)
+        if st.button(f"⏭\n{n}", disabled=(n <= 0 or st.session_state.answered),
+                     use_container_width=True, help=ITEMS["skip"]["desc"]):
+            use_skip()
+            st.rerun()
+
+    with c4:
+        n = st.session_state.inventory.get("shield", 0)
+        if st.button(f"🛡\n{n}", disabled=(st.session_state.shield_active or n <= 0),
+                     use_container_width=True, help=ITEMS["shield"]["desc"]):
             use_shield()
+            st.rerun()
+
+    with c5:
+        n = st.session_state.inventory.get("double", 0)
+        if st.button(f"🪙x2\n{n}", disabled=(st.session_state.double_active or n <= 0),
+                     use_container_width=True, help=ITEMS["double"]["desc"]):
+            use_double()
             st.rerun()
 
 
