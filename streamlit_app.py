@@ -288,6 +288,47 @@ def apply_background(color):
     )
 
 
+def disable_browser_translation():
+    """
+    ブラウザの自動翻訳（Google翻訳など）が化学式（H2Oなど）を
+    勝手に翻訳・書き換えてしまい、選択肢が読み取れなくなる問題への対策。
+    ページ全体と、ボタン要素に「翻訳しない」指示を付与する。
+    """
+    st.markdown(
+        """
+        <meta name="google" content="notranslate">
+        <script>
+        (function() {
+            try {
+                document.documentElement.setAttribute('translate', 'no');
+                document.documentElement.classList.add('notranslate');
+
+                if (!document.querySelector('meta[name="google"]')) {
+                    var meta = document.createElement('meta');
+                    meta.name = 'google';
+                    meta.content = 'notranslate';
+                    document.head.appendChild(meta);
+                }
+
+                function markNoTranslate() {
+                    document.querySelectorAll('button, .stMarkdown, p, h1, h2, h3').forEach(function (el) {
+                        el.setAttribute('translate', 'no');
+                        el.classList.add('notranslate');
+                    });
+                }
+                markNoTranslate();
+                setTimeout(markNoTranslate, 300);
+                setTimeout(markNoTranslate, 1000);
+            } catch (e) {
+                // 何もしない（対応できないブラウザでも壊れないように）
+            }
+        })();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # =========================================================
 # セッション状態の初期化
 # =========================================================
@@ -547,7 +588,10 @@ def render_quiz_screen():
     st.progress(st.session_state.q_index / total)
 
     question, _, _, _ = st.session_state.questions[st.session_state.q_index]
-    st.markdown(f"## {question}")
+    st.markdown(
+        f"<h2 translate='no' class='notranslate'>{question}</h2>",
+        unsafe_allow_html=True,
+    )
 
     if st.session_state.feedback_text:
         st.markdown(
@@ -656,6 +700,7 @@ def render_result_screen():
 # =========================================================
 def main():
     st.set_page_config(page_title="化学クイズゲーム", page_icon="🧪", layout="centered")
+    disable_browser_translation()
     init_state()
 
     screen = st.session_state.screen
