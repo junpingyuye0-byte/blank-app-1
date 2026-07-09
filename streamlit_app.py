@@ -494,6 +494,12 @@ def buy_item(item_id):
         write_save()
 
 
+def discard_item(item_id):
+    if st.session_state.inventory.get(item_id, 0) > 0:
+        st.session_state.inventory[item_id] -= 1
+        write_save()
+
+
 # =========================================================
 # 画面：スタート
 # =========================================================
@@ -524,7 +530,7 @@ def render_shop_screen():
 
     for item_id, info in ITEMS.items():
         with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
                 st.markdown(f"**{info['name']}**　（{info['cost']}コイン）")
                 st.caption(info["desc"])
@@ -533,6 +539,11 @@ def render_shop_screen():
                 disabled = st.session_state.coins < info["cost"]
                 if st.button("購入する", key=f"buy_{item_id}", disabled=disabled, use_container_width=True):
                     buy_item(item_id)
+                    st.rerun()
+            with col3:
+                owned = st.session_state.inventory.get(item_id, 0) <= 0
+                if st.button("捨てる", key=f"discard_{item_id}", disabled=owned, use_container_width=True):
+                    discard_item(item_id)
                     st.rerun()
 
     st.write("")
